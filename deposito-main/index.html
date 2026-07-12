@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribuidora Imperatriz - Atacado e Varejo de Bebidas</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Distribuidora Imperatriz - O melhor atacado e varejo de bebidas da região. Entrega rápida de cervejas, destilados, refrigerantes, energéticos, sucos, gelo e carvão. Compre para sua casa ou empresa.">
+    <meta name="keywords" content="Distribuidora de Bebidas, Atacado de Bebidas, Distribuidora de Refrigerantes, Entrega de Bebidas, Cervejas e Destilados, Distribuidora Imperatriz, Bebidas Baratas, Disk Cerveja">
+    <meta name="author" content="Distribuidora Imperatriz">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://distribuidoraimperatriz.com.br/">
+    <meta property="og:title" content="Distribuidora Imperatriz - Atacado e Varejo de Bebidas">
+    <meta property="og:description" content="Atacado e varejo com as melhores marcas, preços competitivos e entrega rápida de bebidas para toda a região.">
+    <meta property="og:image" content="assets/images/hero_composite.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://distribuidoraimperatriz.com.br/">
+    <meta property="twitter:title" content="Distribuidora Imperatriz - Atacado e Varejo de Bebidas">
+    <meta property="twitter:description" content="Atacado e varejo com as melhores marcas, preços competitivos e entrega rápida de bebidas para toda a região.">
+    <meta property="twitter:image" content="assets/images/hero_composite.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="container header-container">
+            <a href="#" class="logo" id="logo-link">
+                <div class="logo-img">
+                    <img src="assets/images/cat_logo.png" alt="Distribuidora Imperatriz" class="logo-image">
+                </div>
+                <div class="logo-text">
+                    <span class="subtext">DISTRIBUIDORA</span>
+                    <span class="maintext">IMPERATRIZ</span>
+                </div>
+            </a>
+            
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li><a href="#" class="nav-link active">Início</a></li>
+                    <li><a href="#produtos" class="nav-link">Produtos</a></li>
+                    <li><a href="#categorias" class="nav-link">Categorias</a></li>
+                    <li><a href="#sobre-nos" class="nav-link">Sobre Nós</a></li>
+                    <li><a href="#contato" class="nav-link">Contato</a></li>
+                </ul>
+            </nav>
+            
+            <div class="header-actions">
+                <button class="action-btn" id="search-toggle" aria-label="Pesquisar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <button class="action-btn" id="account-btn" aria-label="Minha Conta">
+                    <i class="fa-regular fa-user"></i>
+                </button>
+                <button class="action-btn cart-btn" id="cart-toggle" aria-label="Carrinho de Compras">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span class="cart-count" id="cart-count">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-menu-btn" id="mobile-menu-btn">
+        <i class="fa-solid fa-bars"></i>
+    </div>
+
+    <!-- Search Overlay -->
+    <div class="search-overlay" id="search-overlay">
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Pesquisar bebidas...">
+            <button class="close-search" id="close-search"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container hero-container">
+            <div class="hero-content glass-effect">
+                <span class="hero-tag"><i class="fa-solid fa-bolt" style="color: var(--neon-blue);"></i> DISTRIBUIDORA PREMIUM</span>
+                <h1 class="hero-title">
+                    Gelo no ponto e bebida trincando, <br>
+                    <span class="text-gradient">direto para sua festa ou comércio.</span>
+                </h1>
+                <p class="hero-description">
+                    A <strong>Distribuidora Imperatriz</strong> tem o estoque completo que você precisa. Compre no atacado ou varejo com os melhores preços e entrega rápida em Orlândia e região.
+                </p>
+                
+                <div class="hero-actions">
+                    <a href="#produtos" class="btn btn-primary btn-glow btn-shimmer">
+                        <i class="fa-solid fa-cart-shopping"></i> VER PRODUTOS <i class="fa-solid fa-arrow-right icon-arrow"></i>
+                    </a>
+                    <button class="btn btn-outline" id="hero-cnpj-btn">
+                        <i class="fa-solid fa-briefcase"></i> Comprar para Empresa
+                    </button>
+                </div>
+
+                <!-- Trust Badges -->
+                <div class="trust-badges">
+                    <div class="badge-item"><i class="fa-solid fa-shield-halved"></i> 10+ Anos de Tradição</div>
+                    <div class="badge-item"><i class="fa-solid fa-cubes-stacked"></i> Estoque Completo</div>
+                    <div class="badge-item"><i class="fa-solid fa-bolt"></i> Entrega Rápida</div>
+                </div>
+            </div>
+            
+            <div class="hero-image-wrapper">
+                <div class="hero-glow-back"></div>
+                <img src="assets/images/hero_new_composite.png" alt="Distribuidora Imperatriz Bebidas Premium" class="hero-image">
+            </div>
+        </div>
+    </section>
+
+    <!-- Infinite Marquee -->
+    <div class="marquee-container">
+        <div class="marquee-track">
+            <div class="marquee-content">
+                <span><i class="fa-solid fa-beer-mug-empty"></i> Cervejas Geladas</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-tags"></i> Melhores Preços da Região</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-store"></i> Conveniência</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-truck-fast"></i> Entrega Rápida</span><span class="separator">•</span>
+            </div>
+            <div class="marquee-content">
+                <span><i class="fa-solid fa-beer-mug-empty"></i> Cervejas Geladas</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-tags"></i> Melhores Preços da Região</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-store"></i> Conveniência</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-truck-fast"></i> Entrega Rápida</span><span class="separator">•</span>
+            </div>
+            <div class="marquee-content">
+                <span><i class="fa-solid fa-beer-mug-empty"></i> Cervejas Geladas</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-tags"></i> Melhores Preços da Região</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-store"></i> Conveniência</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-truck-fast"></i> Entrega Rápida</span><span class="separator">•</span>
+            </div>
+            <div class="marquee-content">
+                <span><i class="fa-solid fa-beer-mug-empty"></i> Cervejas Geladas</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-tags"></i> Melhores Preços da Região</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-store"></i> Conveniência</span><span class="separator">•</span>
+                <span><i class="fa-solid fa-truck-fast"></i> Entrega Rápida</span><span class="separator">•</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CATEGORIAS -->
+    <section class="categories-section" id="categorias">
+        <div class="container">
+            <h2 class="section-title">CATEGORIAS</h2>
+            <div class="categories-grid" id="categories-grid">
+                <!-- Cervejas -->
+                <div class="category-card" data-category="cervejas">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_cervejas.png" alt="Cervejas" class="category-img">
+                    </div>
+                    <span class="category-title">CERVEJAS</span>
+                </div>
+                <!-- Destilados -->
+                <div class="category-card" data-category="destilados">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_destilados.png" alt="Destilados" class="category-img">
+                    </div>
+                    <span class="category-title">DESTILADOS</span>
+                </div>
+                <!-- Refrigerantes -->
+                <div class="category-card" data-category="refrigerantes">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_refrigerantes.png" alt="Refrigerantes" class="category-img">
+                    </div>
+                    <span class="category-title">REFRIGERANTES</span>
+                </div>
+                <!-- Energéticos -->
+                <div class="category-card" data-category="energeticos">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_energeticos.png" alt="Energéticos" class="category-img">
+                    </div>
+                    <span class="category-title">ENERGÉTICOS</span>
+                </div>
+                <!-- Águas -->
+                <div class="category-card" data-category="aguas">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_aguas.png" alt="Águas" class="category-img">
+                    </div>
+                    <span class="category-title">ÁGUAS</span>
+                </div>
+                <!-- Sucos -->
+                <div class="category-card" data-category="sucos">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_sucos.png" alt="Sucos" class="category-img">
+                    </div>
+                    <span class="category-title">SUCOS</span>
+                </div>
+                <!-- Gelo -->
+                <div class="category-card" data-category="gelo">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_gelo.png" alt="Gelo" class="category-img">
+                    </div>
+                    <span class="category-title">GELOS</span>
+                </div>
+                <!-- Carvão -->
+                <div class="category-card" data-category="carvao">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_carvao.png" alt="Carvão" class="category-img">
+                    </div>
+                    <span class="category-title">CARVÃO</span>
+                </div>
+                <!-- Conveniência -->
+                <div class="category-card" data-category="conveniencia">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_conveniencia.png" alt="Conveniência" class="category-img">
+                    </div>
+                    <span class="category-title">CONVENIÊNCIA</span>
+                </div>
+                <!-- Atacado -->
+                <div class="category-card" data-category="atacado">
+                    <div class="category-img-container">
+                        <img src="assets/images/categories/cat_atacado.png" alt="Atacado" class="category-img">
+                    </div>
+                    <span class="category-title">ATACADO</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUTOS -->
+    <section class="products-section" id="produtos">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">NOSSO CATÁLOGO</h2>
+                <div class="products-filter">
+                    <button class="filter-btn active" data-filter="todos">Todos</button>
+                    <button class="filter-btn" data-filter="cervejas">Cervejas</button>
+                    <button class="filter-btn" data-filter="destilados">Destilados</button>
+                    <button class="filter-btn" data-filter="refrigerantes">Refrigerantes</button>
+                    <button class="filter-btn" data-filter="energeticos">Energéticos</button>
+                    <button class="filter-btn" data-filter="gelo-carvao">Gelo & Carvão</button>
+                    <button class="filter-btn" data-filter="conveniencia">Conveniência</button>
+                    <button class="filter-btn" data-filter="atacado">Atacado</button>
+                </div>
+            </div>
+            
+            <div class="products-grid" id="products-grid">
+                <!-- Products will be generated dynamically by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about-section" id="sobre-nos">
+        <div class="container about-container">
+            <div class="about-text">
+                <h2 class="section-title about-title">SOBRE NÓS</h2>
+                <p class="about-p-desktop">A <strong>Distribuidora Imperatriz</strong> é referência no mercado de bebidas, atendendo com excelência tanto o comércio local quanto o consumidor final. Fundada com a missão de oferecer as melhores marcas com preços imbatíveis, construímos uma história baseada na confiança, variedade de estoque e pontualidade na entrega.</p>
+                <p class="about-p-desktop">Nossa infraestrutura logística robusta garante que o seu estabelecimento nunca fique desabastecido. Do chopp gelado para o final de semana à grade de refrigerantes para o seu restaurante, a Imperatriz é a sua parceira ideal de negócios.</p>
+                <p class="about-p-mobile">Somos a <strong>Distribuidora Imperatriz</strong>, referência em bebidas em Orlândia e região. Há mais de 10 anos oferecemos estoque completo, preços competitivos e entrega ultra-rápida no atacado e varejo.</p>
+            </div>
+            <div class="about-stats">
+                <div class="stat-card">
+                    <span class="stat-num">+10 Anos</span>
+                    <span class="stat-desc">De Tradição</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num">+5.000</span>
+                    <span class="stat-desc">Clientes Satisfeitos</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num">100%</span>
+                    <span class="stat-desc">Região Atendida</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section" id="contato">
+        <div class="container">
+            <h2 class="section-title">CONTATO</h2>
+            <div class="contact-grid">
+                <div class="contact-info-cards">
+                    <a href="https://wa.me/5516992092552" target="_blank" class="contact-info-card">
+                        <div class="contact-icon-wrapper">
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                        <div class="contact-info-card-content">
+                            <h3>Telefone / WhatsApp</h3>
+                            <p>(16) 99209-2552</p>
+                        </div>
+                    </a>
+                    <a href="https://maps.google.com/?q=R.%20Seis,%202672%20-%20Jardim%20Benini,%20Orl%C3%A2ndia%20-%20SP,%2014620-000" target="_blank" class="contact-info-card">
+                        <div class="contact-icon-wrapper">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div class="contact-info-card-content">
+                            <h3>Nosso Endereço</h3>
+                            <p>R. Seis, 2672 - Jardim Benini<br>Orlândia - SP, 14620-000</p>
+                        </div>
+                    </a>
+                    <a href="mailto:contato@distribuidoraimperatriz.com.br" class="contact-info-card">
+                        <div class="contact-icon-wrapper">
+                            <i class="fa-solid fa-envelope"></i>
+                        </div>
+                        <div class="contact-info-card-content">
+                            <h3>E-mail</h3>
+                            <p>contato@distribuidoraimperatriz.com.br</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="contact-map-container">
+                    <iframe src="https://maps.google.com/maps?q=R.%20Seis,%202672%20-%20Jardim%20Benini,%20Orl%C3%A2ndia%20-%20SP,%2014620-000&t=&z=15&ie=UTF8&iwloc=&output=embed" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RODAPE -->
+    <footer class="footer">
+        <div class="container footer-banners">
+            <div class="footer-banner-item">
+                <div class="fb-icon">
+                    <i class="fa-solid fa-truck-fast"></i>
+                </div>
+                <div class="fb-text">
+                    <h4>ENTREGA RÁPIDA</h4>
+                    <p>Para toda a região</p>
+                </div>
+            </div>
+            <div class="footer-banner-item">
+                <div class="fb-icon">
+                    <i class="fa-solid fa-headset"></i>
+                </div>
+                <div class="fb-text">
+                    <h4>ATENDIMENTO</h4>
+                    <p>(16) 99209-2552</p>
+                </div>
+            </div>
+            <div class="footer-banner-item">
+                <div class="fb-icon">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+                <div class="fb-text">
+                    <h4>PAGAMENTO FACILITADO</h4>
+                    <p>Condições especiais para CNPJ</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-bottom-container">
+                <p>&copy; 2026 Distribuidora Imperatriz. Todos os direitos reservados. Proibida a venda de bebidas alcoólicas para menores de 18 anos.<br><span class="dev-credits">Desenvolvido por <a href="https://soulestrategias.com.br" target="_blank" class="dev-link">Soul Estratégias Digitais</a></span></p>
+                <div class="social-links">
+                    <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Shopping Cart Sidebar -->
+    <div class="cart-sidebar" id="cart-sidebar">
+        <div class="cart-header">
+            <h2><i class="fa-solid fa-cart-shopping"></i> Seu Carrinho</h2>
+            <button class="cart-close" id="cart-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div class="cart-items-container" id="cart-items-container">
+            <!-- Dynamic Cart Items -->
+            <div class="cart-empty-message">
+                <i class="fa-solid fa-basket-shopping"></i>
+                <p>Seu carrinho está vazio.</p>
+                <a href="#produtos" class="btn btn-primary" id="btn-start-shopping">Escolher Bebidas</a>
+            </div>
+        </div>
+        
+        <div class="cart-footer" id="cart-footer">
+            <div class="cart-summary">
+                <div class="summary-line">
+                    <span>Subtotal:</span>
+                    <span class="summary-value" id="cart-subtotal">R$ 0,00</span>
+                </div>
+                <div class="summary-line highlight">
+                    <span>Total estimado:</span>
+                    <span class="summary-value" id="cart-total">R$ 0,00</span>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block btn-glow" id="btn-checkout">
+                FINALIZAR PEDIDO <i class="fa-solid fa-whatsapp"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Cart Sidebar Overlay -->
+    <div class="cart-overlay" id="cart-overlay"></div>
+
+    <!-- Checkout Modal (CPF / CNPJ) -->
+    <div class="modal" id="checkout-modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="modal-header">
+                <h2>Finalizar Pedido</h2>
+                <p>Preencha as informações para gerar o pedido no WhatsApp.</p>
+                
+                <div class="modal-tabs">
+                    <button class="tab-btn active" id="tab-cpf" type="button">
+                        <i class="fa-solid fa-user"></i> Pessoa Física (CPF)
+                    </button>
+                    <button class="tab-btn" id="tab-cnpj" type="button">
+                        <i class="fa-solid fa-briefcase"></i> Pessoa Jurídica (CNPJ)
+                    </button>
+                </div>
+            </div>
+            
+            <form id="checkout-form" class="checkout-form">
+                <!-- Dynamic input fields based on active tab -->
+                <div id="form-fields-container">
+                    <!-- Fields will be generated here -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="checkout-payment">Forma de Pagamento *</label>
+                    <select id="checkout-payment" required>
+                        <option value="" disabled selected>Selecione uma opção...</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="PIX">PIX</option>
+                        <option value="Cartão de Débito">Cartão de Débito</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block btn-glow" id="btn-submit-order">
+                    CONFIRMAR E ENVIAR PARA O WHATSAPP <i class="fa-brands fa-whatsapp"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="modal-overlay" id="modal-overlay"></div>
+
+    <!-- Custom JS -->
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
