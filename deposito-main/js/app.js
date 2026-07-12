@@ -269,9 +269,36 @@ const tabCpf = document.getElementById('tab-cpf');
 const tabCnpj = document.getElementById('tab-cnpj');
 const formFieldsContainer = document.getElementById('form-fields-container');
 
+// Auth Modal Elements
+const authModal = document.getElementById('auth-modal');
+const authOverlay = document.getElementById('auth-overlay');
+const authClose = document.getElementById('auth-close');
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
+const linkToRegister = document.getElementById('link-to-register');
+const linkToLogin = document.getElementById('link-to-login');
+const btnGuestContinue = document.getElementById('btn-guest-continue');
+const linkCheckoutLogin = document.getElementById('link-checkout-login');
+const btnLogout = document.getElementById('btn-logout');
+
+// Auth Views
+const viewLogin = document.getElementById('auth-view-login');
+const viewRegister = document.getElementById('auth-view-register');
+const viewProfile = document.getElementById('auth-view-profile');
+
+// Profile Displays
+const profileNameDisplay = document.getElementById('profile-name-display');
+const profileEmailDisplay = document.getElementById('profile-email-display');
+const profilePhoneDisplay = document.getElementById('profile-phone-display');
+const profileAddressDisplay = document.getElementById('profile-address-display');
+
+// Global Auth State (Mocked)
+let loggedInUser = null;
+
 // --- INIT APP ---
 document.addEventListener('DOMContentLoaded', () => {
     loadLocalStorageCart();
+    loadAuthUser();
     renderProducts('todos');
     renderCart();
     setupEventListeners();
@@ -688,6 +715,9 @@ function renderFormFields() {
         setupPhoneMask('cnpj-telefone');
         setupCNPJMask('cnpj-numero');
     }
+    
+    // Auto-fill if user is logged in
+    prefillCheckoutFields();
 }
 
 // Masks helpers
@@ -707,6 +737,173 @@ function setupCNPJMask(id) {
         let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,2})/);
         e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + '.' + x[3] + '/' + x[4] + (x[5] ? '-' + x[5] : '');
     });
+}
+
+// --- AUTH LOGIC (MOCK) ---
+function loadAuthUser() {
+    const saved = localStorage.getItem('distribuidora_imperatriz_user');
+    if (saved) {
+        try {
+            loggedInUser = JSON.parse(saved);
+            updateAuthHeaderState();
+        } catch (e) {
+            loggedInUser = null;
+        }
+    }
+}
+
+function updateAuthHeaderState() {
+    if (loggedInUser) {
+        accountBtn.classList.add('logged-in');
+    } else {
+        accountBtn.classList.remove('logged-in');
+    }
+}
+
+function openAuthModal() {
+    authModal.classList.add('active');
+    authOverlay.classList.add('active');
+    
+    if (loggedInUser) {
+        showAuthView('profile');
+        renderProfileInfo();
+    } else {
+        showAuthView('login');
+    }
+}
+
+function closeAuthModal() {
+    authModal.classList.remove('active');
+    authOverlay.classList.remove('active');
+}
+
+function showAuthView(viewName) {
+    viewLogin.style.display = viewName === 'login' ? 'block' : 'none';
+    viewRegister.style.display = viewName === 'register' ? 'block' : 'none';
+    viewProfile.style.display = viewName === 'profile' ? 'block' : 'none';
+}
+
+function renderProfileInfo() {
+    if (!loggedInUser) return;
+    profileNameDisplay.textContent = loggedInUser.name;
+    profileEmailDisplay.textContent = loggedInUser.email;
+    profilePhoneDisplay.textContent = loggedInUser.phone;
+    
+    const addr = loggedInUser.address;
+    profileAddressDisplay.innerHTML = `${addr.street}, ${addr.number}<br>${addr.neighborhood} - ${addr.city}/SP`;
+}
+
+function handleMockRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const phone = document.getElementById('reg-phone').value;
+    const password = document.getElementById('reg-password').value;
+    const street = document.getElementById('reg-street').value;
+    const number = document.getElementById('reg-number').value;
+    const neighborhood = document.getElementById('reg-neighborhood').value;
+    const city = document.getElementById('reg-city').value;
+    
+    loggedInUser = {
+        name,
+        email,
+        phone,
+        address: {
+            street,
+            number,
+            neighborhood,
+            city
+        }
+    };
+    
+    localStorage.setItem('distribuidora_imperatriz_user', JSON.stringify(loggedInUser));
+    updateAuthHeaderState();
+    showToast(`Conta criada com sucesso! Bem-vindo, ${name}!`);
+    
+    showAuthView('profile');
+    renderProfileInfo();
+}
+
+function handleMockLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    const mockDbUser = {
+        name: "Cliente VIP Imperatriz",
+        email: email,
+        phone: "(16) 99209-2552",
+        address: {
+            street: "R. Seis",
+            number: "2672",
+            neighborhood: "Jardim Benini",
+            city: "Orlândia"
+        }
+    };
+    
+    const saved = localStorage.getItem('distribuidora_imperatriz_user');
+    if (saved) {
+        const savedUser = JSON.parse(saved);
+        if (savedUser.email === email) {
+            loggedInUser = savedUser;
+        } else {
+            loggedInUser = mockDbUser;
+        }
+    } else {
+        loggedInUser = mockDbUser;
+    }
+    
+    localStorage.setItem('distribuidora_imperatriz_user', JSON.stringify(loggedInUser));
+    updateAuthHeaderState();
+    showToast(`Bem-vindo de volta!`);
+    
+    showAuthView('profile');
+    renderProfileInfo();
+}
+
+function handleMockLogout() {
+    loggedInUser = null;
+    localStorage.removeItem('distribuidora_imperatriz_user');
+    updateAuthHeaderState();
+    showToast("Você saiu da conta.");
+    closeAuthModal();
+}
+
+function prefillCheckoutFields() {
+    const loginPrompt = document.getElementById('checkout-login-prompt');
+    
+    if (!loggedInUser) {
+        if (loginPrompt) loginPrompt.style.display = 'block';
+        return;
+    }
+    
+    if (loginPrompt) loginPrompt.style.display = 'none';
+    
+    if (currentCustomerType === 'cpf') {
+        const cpfNome = document.getElementById('cpf-nome');
+        const cpfTelefone = document.getElementById('cpf-telefone');
+        const cpfEndereco = document.getElementById('cpf-endereco');
+        const cpfBairro = document.getElementById('cpf-bairro');
+        const cpfCidade = document.getElementById('cpf-cidade');
+        
+        if (cpfNome) cpfNome.value = loggedInUser.name;
+        if (cpfTelefone) cpfTelefone.value = loggedInUser.phone;
+        if (cpfEndereco) cpfEndereco.value = loggedInUser.address.street + ", " + loggedInUser.address.number;
+        if (cpfBairro) cpfBairro.value = loggedInUser.address.neighborhood;
+        if (cpfCidade) cpfCidade.value = loggedInUser.address.city;
+    } else {
+        const cnpjResp = document.getElementById('cnpj-responsavel');
+        const cnpjTelefone = document.getElementById('cnpj-telefone');
+        const cnpjEndereco = document.getElementById('cnpj-endereco');
+        const cnpjBairro = document.getElementById('cnpj-bairro');
+        const cnpjCidade = document.getElementById('cnpj-cidade');
+        
+        if (cnpjResp) cnpjResp.value = loggedInUser.name;
+        if (cnpjTelefone) cnpjTelefone.value = loggedInUser.phone;
+        if (cnpjEndereco) cnpjEndereco.value = loggedInUser.address.street + ", " + loggedInUser.address.number;
+        if (cnpjBairro) cnpjBairro.value = loggedInUser.address.neighborhood;
+        if (cnpjCidade) cnpjCidade.value = loggedInUser.address.city;
+    }
 }
 
 // --- SUBMIT ORDER & WHATSAPP REDIRECT ---
@@ -947,4 +1144,36 @@ function setupEventListeners() {
             header.style.boxShadow = 'none';
         }
     });
+
+    // Account / Auth Modal Events
+    accountBtn.addEventListener('click', openAuthModal);
+    authClose.addEventListener('click', closeAuthModal);
+    authOverlay.addEventListener('click', closeAuthModal);
+    
+    // Switch Views
+    linkToRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAuthView('register');
+    });
+    
+    linkToLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAuthView('login');
+    });
+    
+    btnGuestContinue.addEventListener('click', closeAuthModal);
+    
+    linkCheckoutLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeCheckoutModal();
+        openAuthModal();
+    });
+    
+    // Auth Forms Submission
+    loginForm.addEventListener('submit', handleMockLogin);
+    registerForm.addEventListener('submit', handleMockRegister);
+    btnLogout.addEventListener('click', handleMockLogout);
+    
+    // Apply phone mask to registration form phone field
+    setupPhoneMask('reg-phone');
 }

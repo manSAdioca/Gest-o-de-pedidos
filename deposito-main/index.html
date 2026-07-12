@@ -359,11 +359,10 @@
         </div>
         <div class="footer-bottom">
             <div class="container footer-bottom-container">
-                <p>&copy; 2026 Distribuidora Imperatriz. Todos os direitos reservados. Proibida a venda de bebidas alcoólicas para menores de 18 anos.<br><span class="dev-credits">Desenvolvido por <a href="https://soulestrategias.com.br" target="_blank" class="dev-link">Soul Estratégias Digitais</a></span></p>
+                <p>&copy; 2026 Distribuidora Imperatriz. Todos os direitos reservados. Proibida a venda de bebidas alcoólicas para menores de 18 anos.<br><span class="dev-credits">Desenvolvido por <a href="https://wa.me/5547992419566?text=Vim%20do%20site%20imperatriz%20e%20gostaria%20de%20ter%20um%20site%20tambem..." target="_blank" class="dev-link">Soul Estratégias Digitais</a></span></p>
                 <div class="social-links">
-                    <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook"></i></a>
-                    <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
-                    <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                    <a href="https://www.instagram.com/distribuidora.imperatriz/" target="_blank" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="https://wa.me/5516992092552" target="_blank" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
                 </div>
             </div>
         </div>
@@ -422,6 +421,10 @@
                         <i class="fa-solid fa-briefcase"></i> Pessoa Jurídica (CNPJ)
                     </button>
                 </div>
+                
+                <div class="checkout-login-prompt" id="checkout-login-prompt">
+                    <span>Já tem cadastro? <a href="#" id="link-checkout-login" style="color: var(--neon-blue); font-weight: 700; text-decoration: underline;">Faça login</a> para preenchimento automático.</span>
+                </div>
             </div>
             
             <form id="checkout-form" class="checkout-form">
@@ -448,6 +451,131 @@
         </div>
     </div>
     <div class="modal-overlay" id="modal-overlay"></div>
+
+    <!-- Auth Modal (Login / Cadastro / Perfil) -->
+    <div class="modal" id="auth-modal">
+        <div class="modal-content glass-effect">
+            <button class="modal-close" id="auth-close" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+            
+            <!-- VIEW 1: LOGIN -->
+            <div class="auth-view" id="auth-view-login">
+                <div class="modal-header">
+                    <h2>Entrar na Conta</h2>
+                    <p>Faça login para salvar seus dados e agilizar seus pedidos.</p>
+                </div>
+                <form id="login-form" class="checkout-form">
+                    <div class="form-group">
+                        <label for="login-email">E-mail *</label>
+                        <input type="email" id="login-email" required placeholder="seuemail@exemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Senha *</label>
+                        <input type="password" id="login-password" required placeholder="Digite sua senha">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-glow">ENTRAR</button>
+                </form>
+                <div class="auth-switch-link">
+                    <p>Não tem uma conta? <a href="#" id="link-to-register">Cadastre-se aqui</a></p>
+                </div>
+                <div class="auth-guest-link">
+                    <button class="btn-link" id="btn-guest-continue">Continuar como Visitante</button>
+                </div>
+            </div>
+
+            <!-- VIEW 2: CADASTRO -->
+            <div class="auth-view" id="auth-view-register" style="display: none;">
+                <div class="modal-header">
+                    <h2>Criar Nova Conta</h2>
+                    <p>Cadastre-se para acompanhar seus pedidos e salvar seu endereço.</p>
+                </div>
+                <form id="register-form" class="checkout-form">
+                    <div class="form-group">
+                        <label for="reg-name">Nome Completo *</label>
+                        <input type="text" id="reg-name" required placeholder="Ex: João Silva">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">E-mail *</label>
+                        <input type="email" id="reg-email" required placeholder="seuemail@exemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-phone">Telefone / WhatsApp *</label>
+                        <input type="tel" id="reg-phone" required placeholder="Ex: (16) 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Senha *</label>
+                        <input type="password" id="reg-password" required placeholder="Crie uma senha segura">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reg-street">Rua/Avenida *</label>
+                            <input type="text" id="reg-street" required placeholder="Ex: Rua Seis">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-number">Número *</label>
+                            <input type="text" id="reg-number" required placeholder="Ex: 2672">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reg-neighborhood">Bairro *</label>
+                            <input type="text" id="reg-neighborhood" required placeholder="Ex: Jardim Benini">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-city">Cidade *</label>
+                            <input type="text" id="reg-city" required value="Orlândia" placeholder="Orlândia">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-glow">CRIAR CONTA</button>
+                </form>
+                <div class="auth-switch-link">
+                    <p>Já possui uma conta? <a href="#" id="link-to-login">Faça Login</a></p>
+                </div>
+            </div>
+
+            <!-- VIEW 3: PROFILE DASHBOARD -->
+            <div class="auth-view" id="auth-view-profile" style="display: none;">
+                <div class="modal-header">
+                    <h2>Minha Conta</h2>
+                    <p>Bem-vindo de volta! Gerencie suas informações de entrega.</p>
+                </div>
+                <div class="profile-dashboard">
+                    <div class="profile-info-section">
+                        <div class="profile-avatar">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <div class="profile-meta">
+                            <h3 id="profile-name-display">Nome do Cliente</h3>
+                            <span id="profile-email-display" class="profile-email">cliente@email.com</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-details-grid">
+                        <div class="profile-detail-item">
+                            <i class="fa-solid fa-phone" style="color: var(--neon-blue);"></i>
+                            <div>
+                                <strong>WhatsApp Cadastrado</strong>
+                                <p id="profile-phone-display">(16) 99999-9999</p>
+                            </div>
+                        </div>
+                        <div class="profile-detail-item">
+                            <i class="fa-solid fa-location-dot" style="color: var(--neon-blue);"></i>
+                            <div>
+                                <strong>Endereço de Entrega Principal</strong>
+                                <p id="profile-address-display">Rua Seis, 2672 - Jardim Benini - Orlândia/SP</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-actions">
+                        <button class="btn btn-outline btn-block" id="btn-logout" type="button">
+                            <i class="fa-solid fa-right-from-bracket"></i> SAIR DA CONTA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="auth-overlay"></div>
 
     <!-- Custom JS -->
     <script src="js/data.js"></script>

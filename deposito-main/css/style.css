@@ -778,20 +778,24 @@ ul {
 
 /* Product Card */
 .product-card {
-    background: var(--gray-dark);
-    border: 1px solid rgba(45, 107, 255, 0.05);
+    background: rgba(18, 30, 61, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--border-radius-md);
     padding: 24px;
     display: flex;
     flex-direction: column;
     position: relative;
     transition: all var(--transition-normal);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .product-card:hover {
     transform: translateY(-8px);
-    border-color: rgba(45, 107, 255, 0.25);
-    box-shadow: 0 12px 30px rgba(0, 71, 255, 0.15);
+    border-color: var(--neon-blue);
+    background: rgba(18, 30, 61, 0.6);
+    box-shadow: var(--shadow-neon), 0 12px 35px rgba(0, 0, 0, 0.4);
 }
 
 .product-img-wrapper {
@@ -1879,6 +1883,106 @@ ul {
     .social-links {
         justify-content: center;
     }
+
+    .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .product-card {
+        padding: 15px;
+    }
+
+    .product-img-wrapper {
+        height: 120px;
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+
+    .product-category {
+        font-size: 0.6rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .product-name {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+        min-height: 36px;
+    }
+
+    .product-desc {
+        display: none;
+    }
+
+    .product-price-row {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .product-price {
+        text-align: center;
+        align-items: center;
+        width: 100%;
+    }
+
+    .price-value {
+        font-size: 1.15rem;
+    }
+
+    .product-qty-control {
+        width: 100%;
+        justify-content: space-between;
+        max-width: 100px;
+    }
+
+    .btn-add-cart {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        margin-top: 8px;
+    }
+
+    .header-container {
+        height: 75px;
+    }
+
+    .logo {
+        gap: 10px;
+    }
+
+    .logo-image {
+        height: 45px;
+    }
+
+    .logo-text .maintext {
+        font-size: 1.15rem;
+    }
+
+    .logo-text .subtext {
+        font-size: 0.55rem;
+        letter-spacing: 1.5px;
+    }
+
+    .header-actions {
+        gap: 8px;
+    }
+
+    .action-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 0.95rem;
+    }
+
+    .cart-count {
+        width: 18px;
+        height: 18px;
+        font-size: 0.7rem;
+        top: -4px;
+        right: -4px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1915,6 +2019,172 @@ ul {
     }
     
     .logo-text .maintext {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
     }
+
+    .product-card {
+        padding: 10px;
+    }
+}
+
+/* Authentication Modal and Layout Styles */
+.checkout-login-prompt {
+    background: rgba(45, 107, 255, 0.1);
+    border: 1px dashed rgba(45, 107, 255, 0.3);
+    border-radius: var(--border-radius-sm);
+    padding: 12px 15px;
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: var(--gray-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.auth-switch-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: var(--gray-light);
+}
+
+.auth-switch-link a {
+    color: var(--neon-blue);
+    font-weight: 700;
+    transition: color var(--transition-fast);
+}
+
+.auth-switch-link a:hover {
+    color: var(--white);
+    text-shadow: 0 0 8px var(--neon-blue);
+}
+
+.auth-guest-link {
+    text-align: center;
+    margin-top: 15px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.05);
+    padding-top: 15px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--gray-light);
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color var(--transition-fast);
+}
+
+.btn-link:hover {
+    color: var(--white);
+}
+
+/* Profile Dashboard inside Auth Modal */
+.profile-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.profile-info-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(3, 11, 34, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px;
+}
+
+.profile-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(45, 107, 255, 0.15);
+    border: 1.5px solid var(--neon-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(45, 107, 255, 0.2);
+}
+
+.profile-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-meta h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--white);
+}
+
+.profile-email {
+    font-size: 0.85rem;
+    color: var(--gray-light);
+}
+
+.profile-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.profile-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    background: rgba(18, 30, 61, 0.3);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.profile-detail-item i {
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+.profile-detail-item strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--white);
+    margin-bottom: 3px;
+    letter-spacing: 0.5px;
+}
+
+.profile-detail-item p {
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    line-height: 1.4;
+}
+
+.profile-actions {
+    margin-top: 10px;
+}
+
+/* User Logged-in Header Indicator */
+.action-btn.logged-in {
+    border-color: var(--neon-blue);
+    box-shadow: var(--shadow-neon);
+    color: var(--neon-blue);
+    position: relative;
+}
+
+.action-btn.logged-in::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00FF00;
+    border: 1.5px solid var(--bg-dark);
+    box-shadow: 0 0 8px #00FF00;
 }
