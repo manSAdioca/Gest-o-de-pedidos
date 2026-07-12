@@ -292,8 +292,13 @@ const profileEmailDisplay = document.getElementById('profile-email-display');
 const profilePhoneDisplay = document.getElementById('profile-phone-display');
 const profileAddressDisplay = document.getElementById('profile-address-display');
 
-// Global Auth State (Mocked)
-let loggedInUser = null;
+// --- SUPABASE CONFIG ---
+const SUPABASE_URL = 'https://urzxfvhyccxkkcqbyttx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyenhmdmh5Y2N4a2tjcWJ5dHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NTU1MTcsImV4cCI6MjA5OTQzMTUxN30.LT_13YxAnQKi2ODXBhcYwd0Ief7sFKmaAdEV9xL3izI';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Global Auth State
+let loggedInUser = null; // Representa o perfil unificado do usuário
 
 // --- INIT APP ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -739,16 +744,48 @@ function setupCNPJMask(id) {
     });
 }
 
-// --- AUTH LOGIC (MOCK) ---
-function loadAuthUser() {
-    const saved = localStorage.getItem('distribuidora_imperatriz_user');
-    if (saved) {
-        try {
-            loggedInUser = JSON.parse(saved);
-            updateAuthHeaderState();
-        } catch (e) {
-            loggedInUser = null;
+// --- AUTH LOGIC (SUPABASE REAL) ---
+
+// Inicializa ouvindo mudanças de sessão (login, logout, retorno do Google)
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (session && session.user) {
+        await fetchAndSetProfile(session.user);
+    } else {
+        loggedInUser = null;
+        updateAuthHeaderState();
+    }
+});
+
+async function fetchAndSetProfile(authUser) {
+    const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+    const name = profile?.name || authUser.user_metadata?.full_name || authUser.email;
+    const phone = profile?.phone || '';
+
+    loggedInUser = {
+        id: authUser.id,
+        name,
+        email: authUser.email,
+        phone,
+        address: {
+            street: profile?.address_street || '',
+            number: profile?.address_number || '',
+            neighborhood: profile?.address_neighborhood || '',
+            city: profile?.address_city || ''
         }
+    };
+
+    updateAuthHeaderState();
+}
+
+async function loadAuthUser() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+        await fetchAndSetProfile(session.user);
     }
 }
 
@@ -763,7 +800,7 @@ function updateAuthHeaderState() {
 function openAuthModal() {
     authModal.classList.add('active');
     authOverlay.classList.add('active');
-    
+
     if (loggedInUser) {
         showAuthView('profile');
         renderProfileInfo();
@@ -787,13 +824,17 @@ function renderProfileInfo() {
     if (!loggedInUser) return;
     profileNameDisplay.textContent = loggedInUser.name;
     profileEmailDisplay.textContent = loggedInUser.email;
-    profilePhoneDisplay.textContent = loggedInUser.phone;
-    
+    profilePhoneDisplay.textContent = loggedInUser.phone || 'Não informado';
+
     const addr = loggedInUser.address;
-    profileAddressDisplay.innerHTML = `${addr.street}, ${addr.number}<br>${addr.neighborhood} - ${addr.city}/SP`;
+    if (addr && addr.street) {
+        profileAddressDisplay.innerHTML = `${addr.street}, ${addr.number}<br>${addr.neighborhood} - ${addr.city}`;
+    } else {
+        profileAddressDisplay.textContent = 'Não informado';
+    }
 }
 
-function handleMockRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
@@ -803,69 +844,78 @@ function handleMockRegister(e) {
     const number = document.getElementById('reg-number').value;
     const neighborhood = document.getElementById('reg-neighborhood').value;
     const city = document.getElementById('reg-city').value;
-    
-    loggedInUser = {
-        name,
+
+    showToast('Criando conta...');
+
+    const { data, error } = await supabaseClient.auth.signUp({
         email,
-        phone,
-        address: {
-            street,
-            number,
-            neighborhood,
-            city
-        }
-    };
-    
-    localStorage.setItem('distribuidora_imperatriz_user', JSON.stringify(loggedInUser));
-    updateAuthHeaderState();
-    showToast(`Conta criada com sucesso! Bem-vindo, ${name}!`);
-    
-    showAuthView('profile');
-    renderProfileInfo();
+        password,
+        options: { data: { full_name: name } }
+    });
+
+    if (error) {
+        showToast('Erro ao criar conta: ' + error.message);
+        return;
+    }
+
+    if (data.user) {
+        // Salva o perfil na tabela profiles
+        await supabaseClient.from('profiles').upsert({
+            id: data.user.id,
+            name,
+            phone,
+            address_street: street,
+            address_number: number,
+            address_neighborhood: neighborhood,
+            address_city: city
+        });
+
+        showToast(`Conta criada! Bem-vindo(a), ${name}!`);
+        await fetchAndSetProfile(data.user);
+        showAuthView('profile');
+        renderProfileInfo();
+    }
 }
 
-function handleMockLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-    
-    const mockDbUser = {
-        name: "Cliente VIP Imperatriz",
-        email: email,
-        phone: "(16) 99209-2552",
-        address: {
-            street: "R. Seis",
-            number: "2672",
-            neighborhood: "Jardim Benini",
-            city: "Orlândia"
-        }
-    };
-    
-    const saved = localStorage.getItem('distribuidora_imperatriz_user');
-    if (saved) {
-        const savedUser = JSON.parse(saved);
-        if (savedUser.email === email) {
-            loggedInUser = savedUser;
-        } else {
-            loggedInUser = mockDbUser;
-        }
-    } else {
-        loggedInUser = mockDbUser;
+
+    showToast('Entrando...');
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        showToast('Credenciais inválidas. Tente novamente.');
+        return;
     }
-    
-    localStorage.setItem('distribuidora_imperatriz_user', JSON.stringify(loggedInUser));
-    updateAuthHeaderState();
-    showToast(`Bem-vindo de volta!`);
-    
-    showAuthView('profile');
-    renderProfileInfo();
+
+    if (data.user) {
+        await fetchAndSetProfile(data.user);
+        showToast('Bem-vindo(a) de volta!');
+        showAuthView('profile');
+        renderProfileInfo();
+    }
 }
 
-function handleMockLogout() {
+async function handleGoogleLogin() {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: window.location.origin + window.location.pathname
+        }
+    });
+    if (error) {
+        showToast('Erro ao iniciar login com Google: ' + error.message);
+    }
+}
+
+async function handleLogout() {
+    await supabaseClient.auth.signOut();
     loggedInUser = null;
-    localStorage.removeItem('distribuidora_imperatriz_user');
     updateAuthHeaderState();
-    showToast("Você saiu da conta.");
+    showToast('Você saiu da conta.');
     closeAuthModal();
 }
 
@@ -1170,9 +1220,15 @@ function setupEventListeners() {
     });
     
     // Auth Forms Submission
-    loginForm.addEventListener('submit', handleMockLogin);
-    registerForm.addEventListener('submit', handleMockRegister);
-    btnLogout.addEventListener('click', handleMockLogout);
+    loginForm.addEventListener('submit', handleLogin);
+    registerForm.addEventListener('submit', handleRegister);
+    btnLogout.addEventListener('click', handleLogout);
+    
+    // Google Login button
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', handleGoogleLogin);
+    }
     
     // Apply phone mask to registration form phone field
     setupPhoneMask('reg-phone');

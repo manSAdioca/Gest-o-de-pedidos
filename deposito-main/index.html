@@ -463,6 +463,15 @@
                     <h2>Entrar na Conta</h2>
                     <p>Faça login para salvar seus dados e agilizar seus pedidos.</p>
                 </div>
+                
+                <button type="button" class="btn btn-google btn-block" id="btn-google-login">
+                    <i class="fa-brands fa-google"></i> Entrar com o Google
+                </button>
+                
+                <div class="auth-divider">
+                    <span>ou entrar com e-mail</span>
+                </div>
+                
                 <form id="login-form" class="checkout-form">
                     <div class="form-group">
                         <label for="login-email">E-mail *</label>
@@ -576,6 +585,9 @@
         </div>
     </div>
     <div class="modal-overlay" id="auth-overlay"></div>
+
+    <!-- Supabase CDN SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- Custom JS -->
     <script src="js/data.js"></script>
