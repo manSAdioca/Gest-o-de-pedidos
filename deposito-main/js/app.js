@@ -295,20 +295,115 @@ const profileAddressDisplay = document.getElementById('profile-address-display')
 // --- SUPABASE CONFIG ---
 const SUPABASE_URL = 'https://urzxfvhyccxkkcqbyttx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyenhmdmh5Y2N4a2tjcWJ5dHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4NTU1MTcsImV4cCI6MjA5OTQzMTUxN30.LT_13YxAnQKi2ODXBhcYwd0Ief7sFKmaAdEV9xL3izI';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient = null;
+try {
+    if (typeof window.supabase !== 'undefined') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        console.warn('Supabase SDK não está disponível.');
+    }
+} catch (e) {
+    console.error('Falha ao inicializar o Supabase:', e);
+}
 
 // Global Auth State
 let loggedInUser = null; // Representa o perfil unificado do usuário
 
 // --- INIT APP ---
+let appProducts = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     loadLocalStorageCart();
     loadAuthUser();
-    renderProducts('todos');
+    loadAppProducts();
     renderCart();
     setupEventListeners();
     setupCategoryImages();
 });
+
+function getDefaultType(category) {
+    const map = {
+        cervejas: 'bottle',
+        destilados: 'vodka',
+        refrigerantes: 'pet',
+        energeticos: 'energy-can',
+        aguas: 'water',
+        sucos: 'juice',
+        gelo: 'ice',
+        carvao: 'coal',
+        conveniencia: 'snack',
+        atacado: 'box-pack'
+    };
+    return map[category] || 'bottle';
+}
+
+function getDefaultColor(category) {
+    const map = {
+        cervejas: '#008234',
+        destilados: '#00539F',
+        refrigerantes: '#FF0000',
+        energeticos: '#002F6C',
+        aguas: '#0097D7',
+        sucos: '#FFA500',
+        gelo: '#9CE3FF',
+        carvao: '#333333',
+        conveniencia: '#E8A900',
+        atacado: '#0047FF'
+    };
+    return map[category] || '#0047FF';
+}
+
+async function loadAppProducts() {
+    try {
+        let dbProducts = [];
+        
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient
+                .from('products')
+                .select('*')
+                .eq('active', true)
+                .order('created_at', { ascending: false });
+                
+            if (error) {
+                console.warn('Erro RLS ou falha ao buscar produtos:', error);
+            } else if (data && data.length > 0) {
+                dbProducts = data.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    price: parseFloat(p.price),
+                    category: p.category,
+                    image: p.image_url || '',
+                    type: getDefaultType(p.category),
+                    color: getDefaultColor(p.category)
+                }));
+            }
+        }
+        
+        let staticProducts = [];
+        try {
+            if (typeof products !== 'undefined') {
+                staticProducts = products;
+            }
+        } catch(e) {}
+        
+        if (dbProducts.length > 0) {
+            appProducts = dbProducts;
+        } else {
+            appProducts = staticProducts;
+        }
+        
+    } catch (err) {
+        console.error('Erro geral ao carregar produtos do Supabase:', err);
+        try {
+            if (typeof products !== 'undefined') appProducts = products;
+        } catch(e) {
+            appProducts = [];
+        }
+    }
+    
+    renderProducts('todos');
+}
 
 // Categorias que usam imagens reais da pasta assets/ (ex: cat_cervejas.png)
 // Caso queira usar imagem real para outra categoria, basta colocar o nome dela na lista abaixo
@@ -333,15 +428,11 @@ function setupCategoryImages() {
 function renderProducts(filter = 'todos', searchQuery = '') {
     productsGrid.innerHTML = '';
     
-    let filteredProducts = products;
+    let filteredProducts = appProducts;
     
     // Category filter
     if (filter !== 'todos') {
-        if (filter === 'gelo-carvao') {
-            filteredProducts = products.filter(p => p.category === 'gelo' || p.category === 'carvao');
-        } else {
-            filteredProducts = products.filter(p => p.category === filter);
-        }
+        filteredProducts = appProducts.filter(p => p.category === filter);
     }
     
     // Search query filter
@@ -375,7 +466,7 @@ function renderProducts(filter = 'todos', searchQuery = '') {
             : getProductSVG(prod.type, prod.color, prod.name);
         
         // Check if item is already in cart to display active quantity
-        const cartItem = cart.find(item => item.id === prod.id);
+        const cartItem = (Array.isArray(cart) ? cart : []).find(item => item && item.id === prod.id);
         const activeQty = cartItem ? cartItem.quantity : 1;
         
         card.innerHTML = `
@@ -502,22 +593,13 @@ function calculateSubtotal() {
 function renderCart() {
     cartItemsContainer.innerHTML = '';
     
-    if (cart.length === 0) {
+    if (!Array.isArray(cart) || cart.length === 0) {
         cartItemsContainer.innerHTML = `
-            <div class="cart-empty-message">
-                <i class="fa-solid fa-basket-shopping"></i>
+            <div class="empty-cart">
+                <i class="fa-solid fa-cart-arrow-down"></i>
                 <p>Seu carrinho está vazio.</p>
-                <a href="#produtos" class="btn btn-primary" id="btn-start-shopping-empty">Escolher Bebidas</a>
             </div>
         `;
-        
-        const btnEmpty = document.getElementById('btn-start-shopping-empty');
-        if (btnEmpty) {
-            btnEmpty.addEventListener('click', () => {
-                cartSidebar.classList.remove('active');
-                cartOverlay.classList.remove('active');
-            });
-        }
         
         cartSubtotal.textContent = 'R$ 0,00';
         cartTotal.textContent = 'R$ 0,00';
@@ -574,7 +656,8 @@ function loadLocalStorageCart() {
     const saved = localStorage.getItem('distribuidora_imperatriz_cart');
     if (saved) {
         try {
-            cart = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            cart = Array.isArray(parsed) ? parsed.filter(item => item !== null) : [];
         } catch (e) {
             cart = [];
         }
@@ -747,21 +830,31 @@ function setupCNPJMask(id) {
 // --- AUTH LOGIC (SUPABASE REAL) ---
 
 // Inicializa ouvindo mudanças de sessão (login, logout, retorno do Google)
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    if (session && session.user) {
-        await fetchAndSetProfile(session.user);
-    } else {
-        loggedInUser = null;
-        updateAuthHeaderState();
-    }
-});
+if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        if (session && session.user) {
+            await fetchAndSetProfile(session.user);
+        } else {
+            loggedInUser = null;
+            updateAuthHeaderState();
+        }
+    });
+}
 
 async function fetchAndSetProfile(authUser) {
-    const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+    if (!supabaseClient) return;
+    
+    let profile = null;
+    try {
+        const { data } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
+        profile = data;
+    } catch (e) {
+        console.warn('Não foi possível carregar o perfil:', e);
+    }
 
     const name = profile?.name || authUser.user_metadata?.full_name || authUser.email;
     const phone = profile?.phone || '';
@@ -783,9 +876,14 @@ async function fetchAndSetProfile(authUser) {
 }
 
 async function loadAuthUser() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session && session.user) {
-        await fetchAndSetProfile(session.user);
+    if (!supabaseClient) return;
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            await fetchAndSetProfile(session.user);
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar usuário autenticado:', e);
     }
 }
 
@@ -957,13 +1055,17 @@ function prefillCheckoutFields() {
 }
 
 // --- SUBMIT ORDER & WHATSAPP REDIRECT ---
-function handleCheckoutFormSubmit(e) {
+async function handleCheckoutFormSubmit(e) {
     e.preventDefault();
     
     const payment = document.getElementById('checkout-payment').value;
     let message = '';
     
     message += `Olá, gostaria de realizar um pedido.\n\n`;
+    
+    let dbCustomerName = '';
+    let dbCustomerPhone = '';
+    let dbDeliveryAddress = '';
     
     // Assemble Customer Details
     if (currentCustomerType === 'cpf') {
@@ -973,10 +1075,14 @@ function handleCheckoutFormSubmit(e) {
         const bairro = document.getElementById('cpf-bairro').value;
         const cidade = document.getElementById('cpf-cidade').value;
         
+        dbCustomerName = nome;
+        dbCustomerPhone = tel;
+        dbDeliveryAddress = `${end}, ${bairro} - ${cidade}`;
+        
         message += `*CLIENTE:* Pessoa Física (CPF)\n`;
         message += `*Nome:* ${nome}\n`;
         message += `*Telefone:* ${tel}\n`;
-        message += `*Endereço:* ${end}, ${bairro} - ${cidade}\n`;
+        message += `*Endereço:* ${dbDeliveryAddress}\n`;
     } else {
         const razao = document.getElementById('cnpj-razao').value;
         const fantasia = document.getElementById('cnpj-fantasia').value;
@@ -988,6 +1094,10 @@ function handleCheckoutFormSubmit(e) {
         const bairro = document.getElementById('cnpj-bairro').value;
         const cidade = document.getElementById('cnpj-cidade').value;
         
+        dbCustomerName = razao;
+        dbCustomerPhone = tel;
+        dbDeliveryAddress = `${end}, ${bairro} - ${cidade}`;
+        
         message += `*CLIENTE:* Pessoa Jurídica (CNPJ)\n`;
         message += `*Razão Social:* ${razao}\n`;
         message += `*Nome Fantasia:* ${fantasia}\n`;
@@ -995,7 +1105,7 @@ function handleCheckoutFormSubmit(e) {
         message += `*Inscrição Estadual:* ${ie}\n`;
         message += `*Responsável:* ${resp}\n`;
         message += `*Telefone Comercial:* ${tel}\n`;
-        message += `*Endereço Comercial:* ${end}, ${bairro} - ${cidade}\n`;
+        message += `*Endereço Comercial:* ${dbDeliveryAddress}\n`;
     }
     
     message += `*Forma de Pagamento:* ${payment}\n\n`;
@@ -1008,13 +1118,43 @@ function handleCheckoutFormSubmit(e) {
         message += `• *${item.name}* x${item.quantity} - R$ ${item.price.toFixed(2).replace('.', ',')} (Subtotal: R$ ${sub.toFixed(2).replace('.', ',')})\n`;
     });
     
+    const subtotalNum = calculateSubtotal();
+    
     message += `-----------------------------\n`;
-    message += `*Total do Pedido: R$ ${calculateSubtotal().toFixed(2).replace('.', ',')}*\n\n`;
+    message += `*Total do Pedido: R$ ${subtotalNum.toFixed(2).replace('.', ',')}*\n\n`;
     message += `Aguardando confirmação do pedido e taxa de entrega.`;
     
+    // Desabilitar botão durante o envio
+    const btnSubmit = e.target.querySelector('button[type="submit"]');
+    const originalBtnText = btnSubmit.innerHTML;
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando Pedido...';
+    
+    // Salvar no Supabase
+    if (supabaseClient) {
+        try {
+            const customerId = loggedInUser && loggedInUser.id ? loggedInUser.id : null;
+            const { error } = await supabaseClient.from('orders').insert({
+                customer_id: customerId,
+                customer_name: dbCustomerName,
+                customer_phone: dbCustomerPhone,
+                delivery_address: dbDeliveryAddress,
+                items: cart,
+                total: subtotalNum,
+                status: 'Pendente'
+            });
+            if (error) console.error('Erro ao salvar pedido no Supabase:', error);
+        } catch (err) {
+            console.error('Erro fatal ao tentar salvar no Supabase:', err);
+        }
+    }
+    
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = originalBtnText;
+
     // Redirect to WhatsApp
     const encodedText = encodeURIComponent(message);
-    const phoneNumber = '5516992092552'; // Conforme imagem de referência
+    const phoneNumber = '5547992419566'; // Número para testar os pedidos
     const url = `https://wa.me/${phoneNumber}?text=${encodedText}`;
     
     // Open in a new tab
@@ -1107,7 +1247,7 @@ function setupEventListeners() {
             
             // Set filter active state
             filterBtns.forEach(btn => {
-                if (btn.dataset.filter === cat || (cat === 'gelo' || cat === 'carvao' ? btn.dataset.filter === 'gelo-carvao' : false)) {
+                if (btn.dataset.filter === cat) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
