@@ -16,6 +16,12 @@
     --accent-gold: #FFD700;
     --accent-orange: #FFA500;
     
+    /* Variáveis dinâmicas (injetadas via CMS pelo app.js) */
+    --header-bg: rgba(3, 11, 34, 0.95);
+    --text-main-color: #B8C2D1;
+    --text-heading-color: #FFFFFF;
+    --nav-link-color: #B8C2D1;
+    
     --font-primary: 'Outfit', sans-serif;
     --border-radius-sm: 8px;
     --border-radius-md: 16px;
@@ -25,8 +31,29 @@
     --transition-normal: 0.3s ease;
     --transition-slow: 0.5s ease;
     
+    --neon-glow: rgba(45, 107, 255, 0.4);
     --shadow-neon: 0 0 15px rgba(45, 107, 255, 0.4);
     --shadow-neon-strong: 0 0 25px rgba(0, 71, 255, 0.6);
+}
+
+/* STORE CLOSED BANNER */
+.store-closed-banner {
+    background: linear-gradient(90deg, #b91c1c, #dc2626);
+    color: white;
+    text-align: center;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+    z-index: 9999;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.store-closed-banner strong {
+    font-weight: 800;
 }
 
 /* RESET */
@@ -34,6 +61,23 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+/* Scrollbar Customization (Dark Theme) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 html {
@@ -45,13 +89,17 @@ html {
 body {
     font-family: var(--font-primary);
     background-color: var(--bg-dark);
-    color: var(--white);
+    color: var(--text-main-color);
     line-height: 1.6;
     overflow-x: hidden;
     background-image: 
         radial-gradient(circle at 10% 20%, rgba(0, 71, 255, 0.08) 0%, transparent 40%),
         radial-gradient(circle at 90% 80%, rgba(45, 107, 255, 0.08) 0%, transparent 40%);
     background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-heading-color);
 }
 
 img {
@@ -181,7 +229,7 @@ ul {
     left: 0;
     width: 100%;
     z-index: 100;
-    background: rgba(3, 11, 34, 0.85);
+    background: var(--header-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(45, 107, 255, 0.1);
@@ -222,7 +270,7 @@ ul {
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 3px;
-    color: var(--gray-light);
+    color: var(--nav-link-color);
     line-height: 1;
 }
 
@@ -230,11 +278,8 @@ ul {
     font-size: 1.6rem;
     font-weight: 800;
     letter-spacing: 1px;
-    color: var(--white);
+    color: var(--text-heading-color);
     line-height: 1.1;
-    background: linear-gradient(180deg, var(--white) 60%, var(--gray-light));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 .nav-list {
@@ -248,7 +293,7 @@ ul {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--gray-light);
+    color: var(--nav-link-color);
     padding: 8px 0;
     position: relative;
 }
@@ -283,18 +328,18 @@ ul {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: var(--gray-dark);
+    background: rgba(255, 255, 255, 0.05); /* Fundo mais suave e neutro */
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.1rem;
-    color: var(--gray-light);
-    border: 1px solid rgba(45, 107, 255, 0.1);
+    color: var(--nav-link-color);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all var(--transition-fast);
 }
 
 .action-btn:hover {
-    color: var(--white);
+    color: var(--text-heading-color);
     border-color: var(--neon-blue);
     box-shadow: var(--shadow-neon);
     transform: scale(1.05);
@@ -574,7 +619,7 @@ ul {
 
 /* INFINITE MARQUEE */
 .marquee-container {
-    background: var(--neon-blue);
+    background: var(--marquee-bg-color, var(--neon-blue));
     color: var(--white);
     padding: 15px 0;
     overflow: hidden;
@@ -958,9 +1003,6 @@ ul {
     font-size: 1.05rem;
 }
 
-.about-p-mobile {
-    display: none;
-}
 
 .about-stats {
     display: flex;
@@ -1751,14 +1793,6 @@ ul {
     .category-title {
         font-size: 0.7rem;
         letter-spacing: 1px;
-    }
-
-    .about-p-desktop {
-        display: none;
-    }
-
-    .about-p-mobile {
-        display: block;
     }
 
     .about-title {

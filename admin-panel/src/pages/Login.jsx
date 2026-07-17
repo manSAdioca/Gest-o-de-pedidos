@@ -31,7 +31,7 @@ const Login = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div className="glass" style={{ maxWidth: '400px', width: '100%', padding: '40px 30px', textAlign: 'center' }}>
         <div style={{ fontSize: '3rem', marginBottom: '10px' }}>👑</div>
         <h2 style={{ marginBottom: '5px' }}>Painel Admin</h2>

@@ -6,6 +6,8 @@ const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [tenantId, setTenantId] = useState(null);
+  const [tenantStatus, setTenantStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,18 +40,29 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, tenant_id')
         .eq('id', userId)
         .single();
         
       if (!error && data) {
         setRole(data.role);
+        setTenantId(data.tenant_id);
+        
+        if (data.tenant_id) {
+          const { data: tData } = await supabase.from('tenants').select('status').eq('id', data.tenant_id).single();
+          if (tData) setTenantStatus(tData.status);
+        }
       } else {
-        setRole('user'); // Default se não achar
+        // Perfil não encontrado no banco: desloga para evitar comportamento indefinido
+        await supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+        setTenantId(null);
+        setTenantStatus(null);
       }
     } catch (err) {
-      console.error('Erro ao buscar role:', err);
-      setRole('user');
+      // Em caso de erro de rede, apenas desbloqueia o loading sem dar acesso
+      setRole(null);
     } finally {
       setLoading(false);
     }
@@ -64,7 +77,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, tenantId, tenantStatus, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

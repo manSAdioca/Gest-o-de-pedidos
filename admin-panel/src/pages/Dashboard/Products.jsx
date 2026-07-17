@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Image as ImageIcon, Search, X, Download } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Products = () => {
+  const { user, tenantId } = useAuth();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -11,11 +14,13 @@ const Products = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [maxProducts, setMaxProducts] = useState(null);
   
   const [formData, setFormData] = useState({
     productName: '',
     category: 'cervejas',
     price: '',
+    stock: '',
     description: '',
     image_url: '',
     active: true
@@ -28,12 +33,38 @@ const Products = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
+
+      // Fetch Tenant Plan Limits
+      const { data: tenantData } = await supabase
+        .from('tenants')
+        .select(`
+          plan_id,
+          plans ( max_products )
+        `)
+        .eq('id', tenantId)
+        .single();
+        
+      if (tenantData?.plans?.max_products) {
+        setMaxProducts(tenantData.plans.max_products);
+      } else {
+        setMaxProducts(100); // Default/Free limit
+      }
+
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('active', true)
+        .order('name', { ascending: true });
+
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      setCategories(catData || []);
       setProducts(data || []);
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
@@ -57,17 +88,25 @@ const Products = () => {
   const openModal = (product = null) => {
     if (product) {
       setEditingId(product.id);
+      let editCategory = product.category || 'cervejas';
+      // Se a categoria antiga não existe mais na lista, seleciona a primeira disponível
+      if (categories.length > 0 && !categories.some(c => c.slug === editCategory)) {
+        editCategory = categories[0].slug;
+      }
+      
       setFormData({
         productName: product.name || '',
-        category: product.category || 'cervejas',
+        category: editCategory,
         price: product.price || '',
+        stock: product.stock ?? '',
         description: product.description || '',
         image_url: product.image_url || '',
         active: product.active ?? true
       });
     } else {
       setEditingId(null);
-      setFormData({ productName: '', category: 'cervejas', price: '', description: '', image_url: '', active: true });
+      const defaultCategory = categories.length > 0 ? categories[0].slug : 'cervejas';
+      setFormData({ productName: '', category: defaultCategory, price: '', stock: '', description: '', image_url: '', active: true });
     }
     setIsModalOpen(true);
   };
@@ -123,12 +162,15 @@ const Products = () => {
         name: formData.productName,
         category: formData.category,
         price: parseFloat(formData.price),
+        stock: formData.stock !== '' ? parseInt(formData.stock, 10) : 9999,
         description: formData.description,
         image_url: finalImageUrl,
-        active: formData.active
+        active: formData.active,
+        tenant_id: tenantId
       };
 
       if (editingId) {
+        // Na edição, não precisamos sobrescrever o tenant_id, mas não faz mal
         const { error } = await supabase.from('products').update(productData).eq('id', editingId);
         if (error) throw error;
       } else {
@@ -143,6 +185,34 @@ const Products = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const exportToCSV = () => {
+    if (!products || products.length === 0) return;
+    
+    const headers = ['ID', 'Nome', 'Categoria', 'Preco (R$)', 'Estoque', 'Status'];
+    const csvRows = [headers.join(';')];
+    
+    products.forEach(p => {
+      const row = [
+        p.id,
+        `"${p.name.replace(/"/g, '""')}"`,
+        p.category,
+        p.price.toString().replace('.', ','),
+        p.stock === 9999 ? 'Ilimitado' : p.stock,
+        p.active ? 'Ativo' : 'Inativo'
+      ];
+      csvRows.push(row.join(';'));
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `estoque_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -163,7 +233,20 @@ const Products = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="btn btn-primary" onClick={() => openModal()}>
+          <button className="btn btn-outline" onClick={exportToCSV} style={{ color: 'var(--neon-green)', borderColor: 'var(--neon-green)' }}>
+            <Download size={18} /> Exportar
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              if (maxProducts && products.length >= maxProducts) {
+                alert(`LIMITE ATINGIDO!\nSeu plano permite no máximo ${maxProducts} produtos. Faça um upgrade para adicionar mais.`);
+                return;
+              }
+              openModal();
+            }}
+            style={{ opacity: (maxProducts && products.length >= maxProducts) ? 0.6 : 1 }}
+          >
             <Plus size={18} /> Novo Produto
           </button>
         </div>
@@ -186,11 +269,19 @@ const Products = () => {
                 {!product.active && (
                   <span style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(239,68,68,0.9)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Inativo</span>
                 )}
+                {product.active && product.stock <= 0 && (
+                  <span style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(239,68,68,0.9)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Esgotado</span>
+                )}
               </div>
               
               <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{product.name}</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--neon-blue)', marginBottom: '10px', fontWeight: 600, textTransform: 'capitalize' }}>{product.category}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--neon-blue)', fontWeight: 600, textTransform: 'capitalize' }}>{product.category}</span>
+                  <span style={{ fontSize: '0.75rem', color: product.stock <= 10 ? 'rgba(239,68,68,1)' : 'var(--gray)', fontWeight: 600 }}>
+                    Estoque: {product.stock === 9999 || product.stock == null ? 'Ilimitado' : product.stock}
+                  </span>
+                </div>
                 <p style={{ color: 'var(--gray)', fontSize: '0.85rem', marginBottom: '20px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {product.description}
                 </p>
@@ -241,18 +332,16 @@ const Products = () => {
                   <input required type="number" step="0.01" name="price" className="form-control" value={formData.price} onChange={handleInputChange} />
                 </div>
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>Estoque (Deixe vazio p/ infinito)</label>
+                  <input type="number" name="stock" className="form-control" placeholder="Ilimitado" value={formData.stock} onChange={handleInputChange} />
+                </div>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <label>Categoria</label>
                   <select name="category" className="form-control" value={formData.category} onChange={handleInputChange}>
-                    <option value="cervejas">Cervejas</option>
-                    <option value="destilados">Destilados</option>
-                    <option value="refrigerantes">Refrigerantes</option>
-                    <option value="energeticos">Energéticos</option>
-                    <option value="aguas">Águas</option>
-                    <option value="sucos">Sucos</option>
-                    <option value="gelo">Gelo</option>
-                    <option value="carvao">Carvão</option>
-                    <option value="conveniencia">Conveniência</option>
-                    <option value="atacado">Atacado</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.slug} style={{ color: '#000' }}>{cat.name}</option>
+                    ))}
+                    {categories.length === 0 && <option value="cervejas" style={{ color: '#000' }}>Cervejas</option>}
                   </select>
                 </div>
               </div>

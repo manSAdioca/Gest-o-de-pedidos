@@ -238,8 +238,6 @@ function getCategorySVG(category) {
 
 // --- DOM ELEMENTS ---
 const productsGrid = document.getElementById('products-grid');
-const filterBtns = document.querySelectorAll('.filter-btn');
-const categoryCards = document.querySelectorAll('.category-card');
 const cartToggle = document.getElementById('cart-toggle');
 const cartClose = document.getElementById('cart-close');
 const cartSidebar = document.getElementById('cart-sidebar');
@@ -309,19 +307,349 @@ try {
 // Global Auth State
 let loggedInUser = null; // Representa o perfil unificado do usuário
 
+// --- MULTI-TENANT SAAS CONFIG ---
+let TENANT_ID = null;
+let STORE_SLUG = null;
+
+// Descobre qual loja está sendo acessada lendo o link (ex: localhost:5500/?loja=disk100)
+function getStoreSlug() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let slug = urlParams.get('loja');
+    if (!slug) {
+        // Fallback para subdomínio (ex: disk100.distribuidora.com)
+        const hostParts = window.location.hostname.split('.');
+        if (hostParts.length > 1 && hostParts[0] !== 'www' && hostParts[0] !== 'localhost') {
+            slug = hostParts[0];
+        }
+    }
+    return slug || 'imperatriz'; // Fallback padrão
+}
+
 // --- INIT APP ---
 let appProducts = [];
+let appCategories = [];
+let isStoreOpenDB = true;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     loadLocalStorageCart();
     loadAuthUser();
-    loadAppProducts();
-    renderCart();
-    setupEventListeners();
-    setupCategoryImages();
+    
+    // Inicia a descoberta do Tenant
+    await initializeTenant();
+    
+    // Só carrega produtos e interface se o Tenant for válido
+    if (TENANT_ID) {
+        await loadAppProducts();
+        renderCart();
+        setupEventListeners();
+        checkStoreHours();
+    }
 });
 
+async function initializeTenant() {
+    if (!supabaseClient) return;
+    
+    STORE_SLUG = getStoreSlug();
+    
+    try {
+        let queryField = 'slug';
+        let queryValue = STORE_SLUG;
+        
+        const hostname = window.location.hostname;
+        // Ignora localhost e domínios Vercel (onde testamos) para forçar verificação de domínio próprio
+        if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.includes('vercel.app')) {
+            queryField = 'custom_domain';
+            queryValue = hostname;
+        }
+
+        const { data, error } = await supabaseClient
+            .from('tenants')
+            .select('id, name, logo_url')
+            .eq(queryField, queryValue)
+            .single();
+            
+        if (data) {
+            TENANT_ID = data.id;
+            
+            // Atualiza o Visual do Topo da Loja
+            const imgEl = document.getElementById('store-logo-img');
+            const subtextEl = document.getElementById('store-logo-subtext');
+            const maintextEl = document.getElementById('store-logo-maintext');
+            
+            if (imgEl && data.logo_url) imgEl.src = data.logo_url;
+            
+            if (maintextEl) {
+                // Divide o nome em duas partes se houver espaço
+                const parts = data.name.split(' ');
+                if (parts.length > 1) {
+                    subtextEl.textContent = parts[0];
+                    maintextEl.textContent = parts.slice(1).join(' ');
+                } else {
+                    subtextEl.textContent = 'LOJA';
+                    maintextEl.textContent = data.name;
+                }
+            }
+            
+            // Troca o title da aba do navegador
+            document.title = data.name + ' - Catálogo Online';
+            
+            // BUSCA AS CONFIGURAÇÕES DE PERSONALIZAÇÃO (CMS)
+            const { data: settingsData } = await supabaseClient
+                .from('settings')
+                .select('value')
+                .eq('tenant_id', TENANT_ID)
+                .eq('key', 'site_customization')
+                .single();
+                
+            if (settingsData && settingsData.value) {
+                const cms = typeof settingsData.value === 'string' ? JSON.parse(settingsData.value) : settingsData.value;
+                window.applyCMS(cms);
+            }
+
+        } else {
+            console.error('Loja não encontrada no sistema:', error);
+            const isPreview = (new URLSearchParams(window.location.search).get('preview') === 'true') || (window !== window.parent);
+            if (!isPreview) {
+                document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; background:#0f172a; color:white; font-family:sans-serif; text-align:center;"><div><h1 style="color:#ef4444; font-size:3rem; margin-bottom:10px;">404</h1><h2>Loja não encontrada</h2><p style="color:#94a3b8;">Verifique se o link foi digitado corretamente.</p></div></div>';
+            } else {
+                // Se for preview de loja nova, limpa o fundo para podermos injetar o visual
+                document.body.style.background = 'var(--bg-dark)';
+            }
+        }
+    } catch (err) {
+        console.error('Erro fatal ao buscar tenant:', err);
+    }
+}
+
+// === LÓGICA DE INJEÇÃO DO CMS (Reutilizável para Live Preview) ===
+window.applyCMS = function(cms) {
+    console.log('[Live Preview] applyCMS executado com:', cms);
+    // INJEÇÃO SEGURA DE TEXTOS
+    if (cms.heroTitle) {
+        const el = document.getElementById('cms-hero-title');
+        if (el) el.innerHTML = cms.heroTitle;
+    }
+    if (cms.heroDesc) {
+        const el = document.getElementById('cms-hero-desc');
+        if (el) el.textContent = cms.heroDesc;
+    }
+    if (cms.heroTag) {
+        const el = document.getElementById('cms-hero-tag');
+        if (el) el.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--neon-blue)"></i> ${cms.heroTag}`;
+    }
+    if (cms.heroBtnPrimary) {
+        const el = document.getElementById('cms-hero-btn-primary');
+        if (el) el.innerHTML = `<i class="fa-solid fa-cart-shopping"></i> ${cms.heroBtnPrimary} <i class="fa-solid fa-arrow-right icon-arrow"></i>`;
+    }
+    if (cms.heroBtnPrimaryLink) {
+        const el = document.getElementById('cms-hero-btn-primary');
+        if (el) el.href = cms.heroBtnPrimaryLink;
+    }
+    if (cms.heroBtnSecondary) {
+        const el = document.getElementById('hero-cnpj-btn');
+        if (el) el.innerHTML = `<i class="fa-solid fa-briefcase"></i> ${cms.heroBtnSecondary}`;
+    }
+    if (cms.heroBtnSecondaryLink) {
+        const el = document.getElementById('hero-cnpj-btn');
+        if (el) el.href = cms.heroBtnSecondaryLink;
+    }
+    if (cms.marqueeBgColor) {
+        document.documentElement.style.setProperty('--marquee-bg-color', cms.marqueeBgColor);
+    }
+    if (cms.badge1) { const el = document.getElementById('cms-badge-1'); if (el) el.lastChild.textContent = ' ' + cms.badge1; }
+    if (cms.badge2) { const el = document.getElementById('cms-badge-2'); if (el) el.lastChild.textContent = ' ' + cms.badge2; }
+    if (cms.badge3) { const el = document.getElementById('cms-badge-3'); if (el) el.lastChild.textContent = ' ' + cms.badge3; }
+    if (cms.phoneText) {
+        const el = document.getElementById('cms-contact-phone');
+        if (el) el.textContent = cms.phoneText;
+    }
+    if (cms.phoneLink) {
+        const el = document.getElementById('cms-contact-phone-link');
+        if (el) el.href = cms.phoneLink;
+    }
+    if (cms.addressText) {
+        const el = document.getElementById('cms-address-text');
+        if (el) el.innerHTML = cms.addressText;
+    }
+    if (cms.addressLink) {
+        const el = document.getElementById('cms-address-link');
+        if (el) el.href = cms.addressLink;
+    }
+    if (cms.emailText) {
+        const el = document.getElementById('cms-contact-email');
+        if (el) el.textContent = cms.emailText;
+        const link = document.getElementById('cms-contact-email-link');
+        if (link) link.href = 'mailto:' + cms.emailText;
+    }
+    if (cms.mapUrl) {
+        const el = document.getElementById('cms-map-iframe');
+        if (el) el.src = cms.mapUrl;
+    }
+    
+    if (cms.aboutTitle) { const el = document.getElementById('cms-about-title'); if (el) el.textContent = cms.aboutTitle; }
+    if (cms.aboutText1) { const el = document.getElementById('cms-about-text1'); if (el) el.textContent = cms.aboutText1; }
+    if (cms.aboutText2) { const el = document.getElementById('cms-about-text2'); if (el) el.textContent = cms.aboutText2; }
+    if (cms.stat1Num)   { const el = document.getElementById('cms-stat1-num');   if (el) el.textContent = cms.stat1Num; }
+    if (cms.stat1Desc)  { const el = document.getElementById('cms-stat1-desc');  if (el) el.textContent = cms.stat1Desc; }
+    if (cms.stat2Num)   { const el = document.getElementById('cms-stat2-num');   if (el) el.textContent = cms.stat2Num; }
+    if (cms.stat2Desc)  { const el = document.getElementById('cms-stat2-desc');  if (el) el.textContent = cms.stat2Desc; }
+    if (cms.stat3Num)   { const el = document.getElementById('cms-stat3-num');   if (el) el.textContent = cms.stat3Num; }
+    if (cms.stat3Desc)  { const el = document.getElementById('cms-stat3-desc');  if (el) el.textContent = cms.stat3Desc; }
+    
+    if (cms.marqueeText) {
+        const els = document.querySelectorAll('.cms-marquee-text');
+        els.forEach(el => el.textContent = cms.marqueeText);
+    }
+    
+    if (cms.instagram) {
+        const el = document.getElementById('cms-instagram-link');
+        if (el) { el.style.display = 'inline-flex'; el.href = cms.instagram; }
+    } else {
+        const el = document.getElementById('cms-instagram-link');
+        if (el) el.style.display = 'none';
+    }
+    if (cms.facebook) {
+        const el = document.getElementById('cms-facebook-link');
+        if (el) { el.style.display = 'inline-flex'; el.href = cms.facebook; }
+    } else {
+        const el = document.getElementById('cms-facebook-link');
+        if (el) el.style.display = 'none';
+    }
+    if (cms.phoneLink) { // Use phoneLink for Whatsapp icon
+        const el = document.getElementById('cms-whatsapp-link');
+        if (el) { el.style.display = 'inline-flex'; el.href = cms.phoneLink; }
+    }
+    
+    if (cms.footerText) { const el = document.getElementById('cms-footer-text'); if (el) el.textContent = cms.footerText; }
+    if (cms.footerCity) { const el = document.getElementById('cms-footer-city'); if (el) el.textContent = cms.footerCity; }
+
+    // INJEÇÃO DE CSS (Cores e Fontes)
+    if (cms.primaryColor) {
+        document.documentElement.style.setProperty('--primary-blue', cms.primaryColor);
+        document.documentElement.style.setProperty('--neon-blue', cms.primaryColor);
+    }
+    if (cms.bgDark) document.documentElement.style.setProperty('--bg-dark', cms.bgDark);
+    if (cms.headerBg) document.documentElement.style.setProperty('--header-bg', cms.headerBg);
+    if (cms.textMain) document.documentElement.style.setProperty('--text-main-color', cms.textMain);
+    if (cms.textHeading) document.documentElement.style.setProperty('--text-heading-color', cms.textHeading);
+    if (cms.navLinks) document.documentElement.style.setProperty('--nav-link-color', cms.navLinks);
+    if (cms.accentColor) {
+        document.documentElement.style.setProperty('--accent-gold', cms.accentColor);
+        document.documentElement.style.setProperty('--accent-orange', cms.accentColor);
+    }
+    
+    if (cms.fontFamily) {
+        document.documentElement.style.setProperty('--font-primary', cms.fontFamily);
+        const fontName = cms.fontFamily.replace(/ /g, '+');
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;600;700;800&display=swap`;
+        document.head.appendChild(link);
+        document.documentElement.style.setProperty('--font-primary', `'${cms.fontFamily}', sans-serif`);
+    }
+    if (cms.borderRadius) document.documentElement.style.setProperty('--border-radius-md', cms.borderRadius);
+    
+    // IMAGEM HERO
+    if (cms.heroImageUrl) {
+        const el = document.getElementById('cms-hero-image');
+        if (el) el.src = cms.heroImageUrl;
+    }
+    
+    // === CARDS DO RODAPÉ (Footer Banners) ===
+    // Card 1
+    if (cms.fb1Title) { const el = document.getElementById('cms-fb1-title'); if (el) el.textContent = cms.fb1Title; }
+    if (cms.fb1Desc)  { const el = document.getElementById('cms-fb1-desc');  if (el) el.textContent = cms.fb1Desc; }
+    if (cms.fb1Icon)  { const el = document.getElementById('cms-fb1-icon');  if (el) { el.className = ''; el.className = `fa-solid ${cms.fb1Icon}`; } }
+    if (cms.fb1Color) { const el = document.getElementById('cms-fb1-icon-wrapper'); if (el) el.style.color = cms.fb1Color; }
+    if (cms.fb1Bg)    { const el = document.getElementById('cms-fb1'); if (el) el.style.background = cms.fb1Bg; }
+    // Card 2
+    if (cms.fb2Title) { const el = document.getElementById('cms-fb2-title'); if (el) el.textContent = cms.fb2Title; }
+    if (cms.fb2Desc)  { const el = document.getElementById('cms-fb2-desc');  if (el) el.textContent = cms.fb2Desc; }
+    if (cms.fb2Icon)  { const el = document.getElementById('cms-fb2-icon');  if (el) { el.className = ''; el.className = `fa-solid ${cms.fb2Icon}`; } }
+    if (cms.fb2Color) { const el = document.getElementById('cms-fb2-icon-wrapper'); if (el) el.style.color = cms.fb2Color; }
+    if (cms.fb2Bg)    { const el = document.getElementById('cms-fb2'); if (el) el.style.background = cms.fb2Bg; }
+    // Card 3
+    if (cms.fb3Title) { const el = document.getElementById('cms-fb3-title'); if (el) el.textContent = cms.fb3Title; }
+    if (cms.fb3Desc)  { const el = document.getElementById('cms-fb3-desc');  if (el) el.textContent = cms.fb3Desc; }
+    if (cms.fb3Icon)  { const el = document.getElementById('cms-fb3-icon');  if (el) { el.className = ''; el.className = `fa-solid ${cms.fb3Icon}`; } }
+    if (cms.fb3Color) { const el = document.getElementById('cms-fb3-icon-wrapper'); if (el) el.style.color = cms.fb3Color; }
+    if (cms.fb3Bg)    { const el = document.getElementById('cms-fb3'); if (el) el.style.background = cms.fb3Bg; }
+    
+    // LOGO SECUNDÁRIO (imagem no cabeçalho do header)
+    if (cms.logoUrl2) {
+        const el = document.getElementById('store-logo-img');
+        if (el) el.src = cms.logoUrl2;
+    }
+    
+    // FAVICON
+    if (cms.faviconUrl) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+        }
+        link.href = cms.faviconUrl;
+    }
+};
+
+// Escuta mensagens vindas do iframe pai (Super Admin Panel - Live Preview)
+window.addEventListener('message', (event) => {
+    console.log('[Live Preview] Mensagem recebida no iframe:', event.data);
+    // Ignora mensagens que não sejam do nosso live preview
+    if (event.data && event.data.type === 'CMS_LIVE_PREVIEW') {
+        const cmsData = event.data.payload;
+        if (cmsData) {
+            window.applyCMS(cmsData);
+        }
+    }
+});
+
+function checkStoreHours() {
+    const banner = document.getElementById('store-closed-banner');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (!banner) return;
+    
+    // Agora baseamos a decisão puramente no banco de dados (o toggle do painel)
+    const isClosed = !isStoreOpenDB;
+    
+    if (isClosed) {
+        banner.style.display = 'flex';
+        banner.style.background = '#ef4444';
+        banner.style.color = '#fff';
+        banner.style.padding = '15px';
+        banner.style.textAlign = 'center';
+        banner.style.position = 'sticky';
+        banner.style.top = '0';
+        banner.style.zIndex = '9999';
+        banner.innerHTML = '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 1.1rem;"><div style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-store-slash" style="font-size: 1.3rem;"></i> <strong>LOJA FECHADA NESTE MOMENTO</strong></div><span style="font-size: 0.95rem; opacity: 0.9;">Nosso horário de atendimento é das <strong>08:00 às 22:00</strong>. Voltamos em breve!</span></div>';
+        
+        if (checkoutBtn) {
+            checkoutBtn.innerHTML = '<i class="fas fa-store-slash"></i> Fechado (Retorna 08:00)';
+            checkoutBtn.style.background = '#666';
+            checkoutBtn.style.cursor = 'not-allowed';
+            checkoutBtn.disabled = true;
+        }
+    } else {
+        banner.style.display = 'none';
+        if (checkoutBtn) {
+            checkoutBtn.innerHTML = 'Finalizar Pedido no WhatsApp <i class="fab fa-whatsapp"></i>';
+            checkoutBtn.style.background = 'var(--whatsapp)';
+            checkoutBtn.style.cursor = 'pointer';
+            checkoutBtn.disabled = false;
+        }
+    }
+}
+
+function isStoreClosed() {
+    return !isStoreOpenDB;
+}
+
 function getDefaultType(category) {
+    if (appCategories && appCategories.length > 0) {
+        const cat = appCategories.find(c => c.slug === category);
+        if (cat && cat.icon_type) return cat.icon_type;
+    }
     const map = {
         cervejas: 'bottle',
         destilados: 'vodka',
@@ -338,6 +666,10 @@ function getDefaultType(category) {
 }
 
 function getDefaultColor(category) {
+    if (appCategories && appCategories.length > 0) {
+        const cat = appCategories.find(c => c.slug === category);
+        if (cat && cat.color) return cat.color;
+    }
     const map = {
         cervejas: '#008234',
         destilados: '#00539F',
@@ -353,14 +685,55 @@ function getDefaultColor(category) {
     return map[category] || '#0047FF';
 }
 
+
 async function loadAppProducts() {
     try {
         let dbProducts = [];
         
         if (supabaseClient) {
+            // 1. Puxar status de inadimplência da loja SaaS
+            const { data: tenantData } = await supabaseClient
+                .from('tenants')
+                .select('status')
+                .eq('id', TENANT_ID)
+                .single();
+                
+            if (tenantData && tenantData.status === 'blocked') {
+                const overlay = document.getElementById('tenant-blocked-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                // Para a execução aqui para não carregar mais nada
+                return;
+            }
+
+            // 2. Puxar status da loja (aberta/fechada hoje)
+            const { data: settingsData } = await supabaseClient
+                .from('settings')
+                .select('value')
+                .eq('tenant_id', TENANT_ID)
+                .eq('key', 'store_status')
+                .single();
+            if (settingsData) {
+                isStoreOpenDB = settingsData.value === 'open';
+            }
+            checkStoreHours(); // Atualiza a UI imediatamente
+
+            // Puxar categorias
+            const { data: catData, error: catError } = await supabaseClient
+                .from('categories')
+                .select('*')
+                .eq('tenant_id', TENANT_ID)
+                .eq('active', true)
+                .order('name');
+            
+            if (!catError && catData) {
+                appCategories = catData;
+                renderCategoryFilters();
+            }
+
             const { data, error } = await supabaseClient
                 .from('products')
                 .select('*')
+                .eq('tenant_id', TENANT_ID)
                 .eq('active', true)
                 .order('created_at', { ascending: false });
                 
@@ -373,56 +746,132 @@ async function loadAppProducts() {
                     description: p.description,
                     price: parseFloat(p.price),
                     category: p.category,
+                    stock: p.stock,
                     image: p.image_url || '',
                     type: getDefaultType(p.category),
                     color: getDefaultColor(p.category)
                 }));
             }
         }
-        
-        let staticProducts = [];
-        try {
-            if (typeof products !== 'undefined') {
-                staticProducts = products;
-            }
-        } catch(e) {}
-        
-        if (dbProducts.length > 0) {
-            appProducts = dbProducts;
-        } else {
-            appProducts = staticProducts;
-        }
+        // Define os produtos da loja apenas com o que veio do banco de dados
+        appProducts = dbProducts;
+        renderProducts();
         
     } catch (err) {
         console.error('Erro geral ao carregar produtos do Supabase:', err);
-        try {
-            if (typeof products !== 'undefined') appProducts = products;
-        } catch(e) {
-            appProducts = [];
+        renderProducts();
+    } finally {
+        const loader = document.getElementById('global-loader-overlay');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 500);
         }
     }
-    
-    renderProducts('todos');
 }
 
-// Categorias que usam imagens reais da pasta assets/ (ex: cat_cervejas.png)
-// Caso queira usar imagem real para outra categoria, basta colocar o nome dela na lista abaixo
-// e salvar a imagem com formato .png correspondente na pasta assets (ex: cat_destilados.png)
-const categoriesWithCustomImages = ['cervejas', 'destilados', 'gelo', 'carvao', 'refrigerantes', 'energeticos', 'aguas', 'sucos'];
+function renderCategoryFilters() {
+    const filterContainer = document.getElementById('categories-filter-container');
+    const gridContainer = document.getElementById('categories-grid');
+    const categoriasSection = document.getElementById('categorias');
 
-// Setup fallback dynamically for category image assets since real images may not exist locally
-function setupCategoryImages() {
-    categoryCards.forEach(card => {
-        const cat = card.dataset.category;
-        const img = card.querySelector('.category-img');
-        if (img) {
-            // Se a categoria não estiver na lista de imagens customizadas, aplica o SVG dinâmico
-            if (!categoriesWithCustomImages.includes(cat)) {
-                img.src = getCategorySVG(cat);
+    // Se não tiver categorias, oculta a seção
+    if (appCategories.length === 0) {
+        if (categoriasSection) categoriasSection.style.display = 'none';
+        if (filterContainer) filterContainer.innerHTML = '';
+        if (gridContainer) gridContainer.innerHTML = '';
+        return;
+    }
+
+    if (categoriasSection) categoriasSection.style.display = 'block';
+
+    // 1. Atualiza os Botões de Filtro
+    if (filterContainer) {
+        filterContainer.innerHTML = '<button class="filter-btn active" data-filter="todos">Todos</button>';
+        appCategories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.setAttribute('data-filter', cat.slug);
+            btn.textContent = cat.name;
+            filterContainer.appendChild(btn);
+        });
+
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const catSlug = btn.getAttribute('data-filter');
+                renderProducts(catSlug);
+                
+                // Sincroniza o Card
+                const currentCards = document.querySelectorAll('.category-card');
+                currentCards.forEach(c => {
+                    if (c.getAttribute('data-category') === catSlug) {
+                        c.classList.add('active');
+                    } else {
+                        c.classList.remove('active');
+                    }
+                });
+            });
+        });
+    }
+
+    // 2. Atualiza os Cards Grandes (Grade de Categorias)
+    if (gridContainer) {
+        gridContainer.innerHTML = '';
+        appCategories.forEach(cat => {
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.setAttribute('data-category', cat.slug);
+
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'category-img-container';
+            const img = document.createElement('img');
+            img.className = 'category-img';
+
+            if (cat.image_url) {
+                img.src = cat.image_url;
+                img.style.objectFit = 'cover';
+                img.style.width = '100%';
+                img.style.height = '100%';
+            } else if (categoriesWithCustomImages.includes(cat.slug)) {
+                img.src = `assets/images/categories/cat_${cat.slug}.png`;
+            } else {
+                // Tenta carregar a imagem dinâmica, senão usa o SVG padrão
+                img.src = getCategorySVG(cat.slug);
             }
-        }
-    });
+            img.alt = cat.name;
+            imgContainer.appendChild(img);
+
+            const title = document.createElement('span');
+            title.className = 'category-title';
+            title.textContent = cat.name.toUpperCase();
+
+            card.appendChild(imgContainer);
+            card.appendChild(title);
+
+            // Adiciona Evento de Clique
+            card.addEventListener('click', () => {
+                // Scrolla pros produtos
+                const prodSection = document.getElementById('produtos');
+                if (prodSection) prodSection.scrollIntoView({ behavior: 'smooth' });
+                
+                // Clica no botão correspondente
+                const filterBtns = document.querySelectorAll('.filter-btn');
+                filterBtns.forEach(b => {
+                    if(b.getAttribute('data-filter') === cat.slug) {
+                        b.click();
+                    }
+                });
+            });
+
+            gridContainer.appendChild(card);
+        });
+    }
 }
+
+const categoriesWithCustomImages = ['cervejas', 'destilados', 'gelo', 'carvao', 'refrigerantes', 'energeticos', 'aguas', 'sucos'];
 
 // Categorias e Catálogo
 function renderProducts(filter = 'todos', searchQuery = '') {
@@ -469,12 +918,22 @@ function renderProducts(filter = 'todos', searchQuery = '') {
         const cartItem = (Array.isArray(cart) ? cart : []).find(item => item && item.id === prod.id);
         const activeQty = cartItem ? cartItem.quantity : 1;
         
+        const isOutOfStock = prod.stock <= 0;
+        const stockDisplay = isOutOfStock 
+            ? `<div class="out-of-stock-badge" style="position:absolute; top:10px; right:10px; background:var(--danger); color:white; padding:5px 10px; border-radius:4px; font-weight:bold; font-size:0.8rem; z-index:10;">ESGOTADO</div>`
+            : '';
+            
+        // Buscar o nome real da categoria a partir do slug
+        const categoryObj = appCategories && appCategories.find(c => c.slug === prod.category);
+        const displayCategoryName = categoryObj ? categoryObj.name : prod.category.replace(/-/g, ' ');
+            
         card.innerHTML = `
-            <div class="product-img-wrapper">
+            <div class="product-img-wrapper" style="position:relative;">
+                ${stockDisplay}
                 ${imageContent}
             </div>
             <div class="product-info">
-                <span class="product-category">${prod.category}</span>
+                <span class="product-category">${displayCategoryName}</span>
                 <h3 class="product-name">${prod.name}</h3>
                 <p class="product-desc">${prod.description}</p>
                 <div class="product-price-row">
@@ -483,13 +942,13 @@ function renderProducts(filter = 'todos', searchQuery = '') {
                         <span class="price-value">R$ ${prod.price.toFixed(2).replace('.', ',')}</span>
                     </div>
                     <div class="product-qty-control">
-                        <button class="qty-btn btn-minus" aria-label="Diminuir"><i class="fa-solid fa-minus"></i></button>
-                        <input type="text" class="qty-input" value="${activeQty}" readonly aria-label="Quantidade">
-                        <button class="qty-btn btn-plus" aria-label="Aumentar"><i class="fa-solid fa-plus"></i></button>
+                        <button class="qty-btn btn-minus" aria-label="Diminuir" ${isOutOfStock ? 'disabled' : ''}><i class="fa-solid fa-minus"></i></button>
+                        <input type="text" class="qty-input" value="${isOutOfStock ? 0 : activeQty}" readonly aria-label="Quantidade">
+                        <button class="qty-btn btn-plus" aria-label="Aumentar" ${isOutOfStock ? 'disabled' : ''}><i class="fa-solid fa-plus"></i></button>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-add-cart">
-                    <i class="fa-solid fa-cart-plus"></i> Adicionar
+                <button class="btn btn-primary btn-add-cart" ${isOutOfStock ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                    <i class="fa-solid fa-cart-plus"></i> ${isOutOfStock ? 'Esgotado' : 'Adicionar'}
                 </button>
             </div>
         `;
@@ -510,12 +969,19 @@ function renderProducts(filter = 'todos', searchQuery = '') {
         
         btnPlus.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (isOutOfStock) return;
             let val = parseInt(qtyInput.value);
-            qtyInput.value = val + 1;
+            const limit = prod.stock === 9999 || prod.stock == null ? 9999 : prod.stock;
+            if (val < limit) {
+                qtyInput.value = val + 1;
+            } else {
+                showToast(`Estoque máximo atingido (${limit} unid.)`);
+            }
         });
         
         btnAdd.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (isOutOfStock) return;
             const qty = parseInt(qtyInput.value);
             addToCart(prod, qty);
         });
@@ -527,10 +993,19 @@ function renderProducts(filter = 'todos', searchQuery = '') {
 // --- CART LOGIC ---
 function addToCart(product, quantity) {
     const existingItem = cart.find(item => item.id === product.id);
+    const limit = product.stock === 9999 || product.stock == null ? 9999 : product.stock;
     
     if (existingItem) {
+        if (existingItem.quantity + quantity > limit) {
+            showToast(`Você só pode adicionar mais ${limit - existingItem.quantity} unid.`);
+            return;
+        }
         existingItem.quantity += quantity;
     } else {
+        if (quantity > limit) {
+            showToast(`Estoque máximo: ${limit} unid.`);
+            return;
+        }
         cart.push({
             id: product.id,
             name: product.name,
@@ -555,6 +1030,16 @@ function addToCart(product, quantity) {
 function updateCartQuantity(id, change) {
     const item = cart.find(item => item.id === id);
     if (!item) return;
+    
+    // Check stock limit
+    const prodDetails = appProducts.find(p => p.id === id);
+    if (prodDetails) {
+        const limit = prodDetails.stock === 9999 || prodDetails.stock == null ? 9999 : prodDetails.stock;
+        if (change > 0 && item.quantity + change > limit) {
+            showToast(`Estoque máximo atingido (${limit} unid.)`);
+            return;
+        }
+    }
     
     item.quantity += change;
     
@@ -1122,7 +1607,12 @@ async function handleCheckoutFormSubmit(e) {
     
     message += `-----------------------------\n`;
     message += `*Total do Pedido: R$ ${subtotalNum.toFixed(2).replace('.', ',')}*\n\n`;
-    message += `Aguardando confirmação do pedido e taxa de entrega.`;
+    
+    if (isStoreClosed()) {
+        message += `🚨 *AVISO: Pedido realizado fora do horário de funcionamento. A entrega será feita assim que abrirmos (às 08:00h).*`;
+    } else {
+        message += `Aguardando confirmação do pedido e taxa de entrega.`;
+    }
     
     // Desabilitar botão durante o envio
     const btnSubmit = e.target.querySelector('button[type="submit"]');
@@ -1141,7 +1631,8 @@ async function handleCheckoutFormSubmit(e) {
                 delivery_address: dbDeliveryAddress,
                 items: cart,
                 total: subtotalNum,
-                status: 'Pendente'
+                status: 'Pendente',
+                tenant_id: TENANT_ID
             });
             if (error) console.error('Erro ao salvar pedido no Supabase:', error);
         } catch (err) {
@@ -1217,51 +1708,7 @@ function setupEventListeners() {
         renderProducts(activeFilter, val);
     });
     
-    // Filters buttons catalog
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            const category = btn.dataset.filter;
-            renderProducts(category, searchInput.value);
-            
-            // Sync category cards if matching
-            categoryCards.forEach(card => {
-                if (card.dataset.category === category) {
-                    card.classList.add('active');
-                } else {
-                    card.classList.remove('active');
-                }
-            });
-        });
-    });
-    
-    // Categories Grid Click Event
-    categoryCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const cat = card.dataset.category;
-            
-            // Scroll to catalog section
-            document.getElementById('produtos').scrollIntoView({ behavior: 'smooth' });
-            
-            // Set filter active state
-            filterBtns.forEach(btn => {
-                if (btn.dataset.filter === cat) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            
-            // Toggle active category card state
-            categoryCards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-            
-            renderProducts(cat);
-        });
-    });
-    
+    // Eventos antigos removidos porque as categorias agora são renderizadas dinamicamente em renderCategoryFilters()
     // CNPJ Hero trigger
     heroCnpjBtn.addEventListener('click', () => {
         openCheckoutModal();
