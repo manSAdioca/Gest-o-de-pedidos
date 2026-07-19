@@ -335,7 +335,7 @@ function getStoreSlug() {
             }
         }
     }
-    return slug || 'imperatriz'; // Fallback padrão
+    return slug || 'principal'; // Fallback padrão
 }
 
 // --- INIT APP ---
