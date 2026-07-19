@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { HeadphonesIcon, MessageSquare, CheckCircle, Clock } from 'lucide-react';
+import { HeadphonesIcon, MessageSquare, CheckCircle, Clock, Trash2 } from 'lucide-react';
 
 const Support = () => {
   const { tenantId } = useAuth();
@@ -56,6 +56,32 @@ const Support = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    const pwd = prompt('Apenas administradores podem apagar chamados. Digite a senha de administrador:');
+    if (!pwd) return;
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc('verify_admin_password', {
+        p_tenant_id: tenantId,
+        p_password: pwd
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (data) {
+        if (!window.confirm('Senha correta! Deseja realmente excluir este chamado?')) return;
+        const { error } = await supabase.from('tickets').delete().eq('id', id);
+        if (error) throw error;
+        loadTickets();
+      } else {
+        alert('Senha incorreta! Você não tem permissão para apagar este chamado.');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar senha ou deletar:', error);
+      alert('Erro ao processar sua solicitação.');
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch(status) {
       case 'open': return <span style={{ padding: '4px 10px', borderRadius: '20px', background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> Aguardando Suporte</span>;
@@ -86,6 +112,7 @@ const Support = () => {
                 <th style={{ padding: '15px 20px', borderBottom: '1px solid var(--border)' }}>Assunto</th>
                 <th style={{ padding: '15px 20px', borderBottom: '1px solid var(--border)' }}>Data</th>
                 <th style={{ padding: '15px 20px', borderBottom: '1px solid var(--border)' }}>Status</th>
+                <th style={{ padding: '15px 20px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -106,10 +133,20 @@ const Support = () => {
                   <td style={{ padding: '15px 20px' }}>
                     {getStatusBadge(ticket.status)}
                   </td>
+                  <td style={{ padding: '15px 20px', textAlign: 'right' }}>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ padding: '6px 10px', color: 'rgba(239,68,68,0.9)', borderColor: 'rgba(239,68,68,0.3)' }}
+                      onClick={() => handleDelete(ticket.id)}
+                      title="Apagar Chamado"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {tickets.length === 0 && (
-                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color)', opacity: 0.5 }}>Nenhum chamado aberto ainda.</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color)', opacity: 0.5 }}>Nenhum chamado aberto ainda.</td></tr>
               )}
             </tbody>
           </table>
