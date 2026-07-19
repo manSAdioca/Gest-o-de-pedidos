@@ -4,6 +4,7 @@
 // --- APP STATE ---
 let cart = [];
 let currentCustomerType = 'cpf'; // 'cpf' or 'cnpj'
+let currentCoupon = null; // { code: '...', type: 'percentage', value: 10, min_order: 0 }
 
 // --- SVGS TEMPLATES GENERATORS ---
 function getProductSVG(type, color, name) {
@@ -307,9 +308,17 @@ try {
 // Global Auth State
 let loggedInUser = null; // Representa o perfil unificado do usuário
 
-// --- MULTI-TENANT SAAS CONFIG ---
+// --- MULTI-TENANT SAAS E CONFIGURAÇÕES ---
 let TENANT_ID = null;
 let STORE_SLUG = null;
+let storeSettings = {
+    horario_funcionamento: null,
+    configuracao_entrega: null,
+    configuracao_pagamento: null,
+    info_loja: null,
+    site_customization: null
+};
+let currentDeliveryFee = 0;
 
 // Descobre qual loja está sendo acessada lendo o link (ex: localhost:5500/?loja=disk100)
 function getStoreSlug() {
@@ -364,12 +373,23 @@ async function initializeTenant() {
 
         const { data, error } = await supabaseClient
             .from('tenants')
-            .select('id, name, logo_url')
+            .select('id, name, logo_url, status')
             .eq(queryField, queryValue)
             .single();
             
         if (data) {
             TENANT_ID = data.id;
+            
+            // Verifica Suspensão (Mensalidade atrasada)
+            if (data.status === 'suspended') {
+                const overlay = document.getElementById('tenant-blocked-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                // Remove o global loader pois a tela ficará bloqueada
+                const loader = document.getElementById('global-loader-overlay');
+                if (loader) loader.style.display = 'none';
+                return; // Impede que o resto da loja carregue (produtos, etc)
+            }
+
             
             // Atualiza o Visual do Topo da Loja
             const imgEl = document.getElementById('store-logo-img');
@@ -393,18 +413,26 @@ async function initializeTenant() {
             // Troca o title da aba do navegador
             document.title = data.name + ' - Catálogo Online';
             
-            // BUSCA AS CONFIGURAÇÕES DE PERSONALIZAÇÃO (CMS)
+            // BUSCA TODAS AS CONFIGURAÇÕES DA LOJA (CMS, Horário, Entrega, etc)
             const { data: settingsData } = await supabaseClient
                 .from('settings')
-                .select('value')
-                .eq('tenant_id', TENANT_ID)
-                .eq('key', 'site_customization')
-                .single();
+                .select('key, value')
+                .eq('tenant_id', TENANT_ID);
                 
-            if (settingsData && settingsData.value) {
-                const cms = typeof settingsData.value === 'string' ? JSON.parse(settingsData.value) : settingsData.value;
-                window.applyCMS(cms);
+            if (settingsData && settingsData.length > 0) {
+                settingsData.forEach(s => {
+                    const val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
+                    storeSettings[s.key] = val;
+                    if (s.key === 'site_customization') {
+                        window.applyCMS(val);
+                    }
+                });
             }
+            // Verifica integrações
+            try {
+                const { data: hasMp } = await supabaseClient.rpc('check_mercadopago_active', { p_tenant_id: TENANT_ID });
+                storeSettings.has_mercadopago = hasMp;
+            } catch(e) { console.error('Erro ao verificar MP:', e); }
 
         } else {
             console.error('Loja não encontrada no sistema:', error);
@@ -414,6 +442,11 @@ async function initializeTenant() {
             } else {
                 // Se for preview de loja nova, limpa o fundo para podermos injetar o visual
                 document.body.style.background = 'var(--bg-dark)';
+                const loader = document.getElementById('global-loader-overlay');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
             }
         }
     } catch (err) {
@@ -582,14 +615,116 @@ window.applyCMS = function(cms) {
     }
     
     // FAVICON
-    if (cms.faviconUrl) {
-        let link = document.querySelector("link[rel~='icon']");
-        if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
+    if (cms.faviconUrl && !cms.faviconUrl.includes('favicon_principal_1784477475910.svg')) {
+        let oldLink = document.querySelector("link[rel~='icon']");
+        if (oldLink) {
+            oldLink.remove();
         }
-        link.href = cms.faviconUrl;
+        let link = document.createElement('link');
+        link.rel = 'icon';
+        
+        const lowerUrl = cms.faviconUrl.toLowerCase();
+        if (lowerUrl.includes('.svg')) {
+            link.type = 'image/svg+xml';
+        } else if (lowerUrl.includes('.png')) {
+            link.type = 'image/png';
+        } else {
+            link.type = 'image/x-icon';
+        }
+        
+        // Adiciona um timestamp para furar qualquer cache do navegador
+        link.href = cms.faviconUrl + '?v=' + new Date().getTime();
+        document.head.appendChild(link);
+    }
+
+    // === SISTEMA DE TEMAS E ESTRUTURA ===
+    
+    // 1. Limpa classes de tema anteriores
+    document.body.classList.remove('theme-glass', 'theme-light', 'theme-cyberpunk', 'theme-nature', 'theme-luxury', 'has-bg-texture');
+    document.body.classList.remove('btn-style-square', 'btn-style-pill', 'btn-style-neumorphism', 'btn-style-outline-glow', 'btn-style-3d-press');
+    document.body.classList.remove('effect-particles', 'effect-glow', 'effect-tilt', 'effect-reveal', 'effect-skeleton');
+    document.body.classList.remove('effect-parallax', 'effect-cursor', 'effect-floating', 'effect-glitch', 'effect-pulse', 'effect-snow');
+    
+    // 2. Aplica Tema
+    if (cms.theme) {
+        if (cms.theme === 'glass') document.body.classList.add('theme-glass');
+        if (cms.theme === 'light') document.body.classList.add('theme-light');
+        if (cms.theme === 'cyberpunk') document.body.classList.add('theme-cyberpunk');
+        if (cms.theme === 'nature') document.body.classList.add('theme-nature');
+        if (cms.theme === 'luxury') document.body.classList.add('theme-luxury');
+    }
+    
+    // 3. Formato de Botão
+    if (cms.buttonStyle) {
+        if (cms.buttonStyle === 'square') document.body.classList.add('btn-style-square');
+        if (cms.buttonStyle === 'pill') document.body.classList.add('btn-style-pill');
+        if (cms.buttonStyle === 'neumorphism') document.body.classList.add('btn-style-neumorphism');
+        if (cms.buttonStyle === 'outline-glow') document.body.classList.add('btn-style-outline-glow');
+        if (cms.buttonStyle === '3d-press') document.body.classList.add('btn-style-3d-press');
+    }
+    
+    // 4. WOW Effects Granulares
+    if (cms.effectParticles !== false) document.body.classList.add('effect-particles');
+    if (cms.effectGlow !== false) document.body.classList.add('effect-glow');
+    if (cms.effectTilt !== false) document.body.classList.add('effect-tilt');
+    if (cms.effectReveal !== false) document.body.classList.add('effect-reveal');
+    if (cms.effectSkeleton !== false) document.body.classList.add('effect-skeleton');
+    
+    if (cms.effectParallax === true) document.body.classList.add('effect-parallax');
+    if (cms.effectCursor === true) document.body.classList.add('effect-cursor');
+    if (cms.effectFloating === true) document.body.classList.add('effect-floating');
+    
+    if (cms.effectGlitch === true) {
+        document.body.classList.add('effect-glitch');
+        // Define data-text para os títulos funcionarem com o ::before do Glitch
+        setTimeout(() => {
+            document.querySelectorAll('h1, h2, .hero-title').forEach(el => {
+                if (!el.getAttribute('data-text')) {
+                    el.setAttribute('data-text', el.innerText || el.textContent);
+                }
+            });
+        }, 100);
+    }
+    if (cms.effectPulse === true) document.body.classList.add('effect-pulse');
+    if (cms.effectSnow === true) document.body.classList.add('effect-snow');
+    
+    // Salvar emojis customizados globalmente
+    window.customFloatingEmojis = cms.floatingEmojis;
+    
+    // 5. Textura de Fundo
+    if (cms.bgTextureUrl) {
+        document.documentElement.style.setProperty('--bg-texture', `url('${cms.bgTextureUrl}')`);
+        document.body.classList.add('has-bg-texture');
+    } else {
+        document.documentElement.style.removeProperty('--bg-texture');
+    }
+
+    // 6. Ordenação de Seções (Construtor)
+    if (cms.sectionOrder) {
+        // Ex: "hero,categories,products,about,contact"
+        const orderArray = cms.sectionOrder.split(',').map(s => s.trim());
+        const sectionsMap = {
+            'hero': document.getElementById('hero'),
+            'categories': document.getElementById('categorias'),
+            'products': document.getElementById('produtos'),
+            'about': document.getElementById('sobre-nos'),
+            'contact': document.getElementById('contato')
+        };
+        
+        // Pega o container pai de todos (provavelmente o body ou main, mas a estrutura atual tem seções filhas diretas do body)
+        // Para segurança, vamos usar o body, ou container principal. No index.html, as sections são filhas diretas do body.
+        // Vamos achar a primeira seção para usar como âncora, ou apenas dar appendChild na ordem correta, mas temos que manter header/footer.
+        const header = document.querySelector('.header');
+        const footer = document.querySelector('.footer');
+        const cartOverlay = document.getElementById('cart-overlay');
+        
+        orderArray.forEach(sectionId => {
+            const el = sectionsMap[sectionId];
+            if (el && el.parentNode) {
+                // Move element to the end of the parent before footer
+                el.parentNode.insertBefore(el, footer);
+            }
+        });
     }
 };
 
@@ -605,13 +740,34 @@ window.addEventListener('message', (event) => {
     }
 });
 
+function isStoreClosed() {
+    const horario = storeSettings.horario_funcionamento;
+    if (!horario) return false; // Se não tem horário configurado, assume aberto
+    
+    const now = new Date();
+    const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDayStr = daysMap[now.getDay()];
+    
+    const todayConfig = horario[currentDayStr];
+    if (!todayConfig || !todayConfig.aberto) return true;
+    
+    const currentTimeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const abertura = todayConfig.abertura || '00:00';
+    const fechamento = todayConfig.fechamento || '23:59';
+    
+    if (currentTimeStr >= abertura && currentTimeStr <= fechamento) {
+        return false;
+    }
+    
+    return true;
+}
+
 function checkStoreHours() {
     const banner = document.getElementById('store-closed-banner');
     const checkoutBtn = document.getElementById('checkout-btn');
     if (!banner) return;
     
-    // Agora baseamos a decisão puramente no banco de dados (o toggle do painel)
-    const isClosed = !isStoreOpenDB;
+    const isClosed = isStoreClosed();
     
     if (isClosed) {
         banner.style.display = 'flex';
@@ -622,27 +778,32 @@ function checkStoreHours() {
         banner.style.position = 'sticky';
         banner.style.top = '0';
         banner.style.zIndex = '9999';
-        banner.innerHTML = '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 1.1rem;"><div style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-store-slash" style="font-size: 1.3rem;"></i> <strong>LOJA FECHADA NESTE MOMENTO</strong></div><span style="font-size: 0.95rem; opacity: 0.9;">Nosso horário de atendimento é das <strong>08:00 às 22:00</strong>. Voltamos em breve!</span></div>';
+        
+        let txtHorario = '08:00 às 22:00';
+        if (storeSettings.horario_funcionamento) {
+             const now = new Date();
+             const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+             const todayConfig = storeSettings.horario_funcionamento[daysMap[now.getDay()]];
+             if (todayConfig) {
+                 txtHorario = `${todayConfig.abertura} às ${todayConfig.fechamento}`;
+             }
+        }
+
+        banner.innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 1.1rem;"><div style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-store-slash" style="font-size: 1.3rem;"></i> <strong>LOJA FECHADA NESTE MOMENTO</strong></div><span style="font-size: 0.95rem; opacity: 0.9;">Horário de hoje: <strong>${txtHorario}</strong></span></div>`;
         
         if (checkoutBtn) {
-            checkoutBtn.innerHTML = '<i class="fas fa-store-slash"></i> Fechado (Retorna 08:00)';
+            checkoutBtn.innerHTML = '<i class="fas fa-store-slash"></i> Fechado';
             checkoutBtn.style.background = '#666';
             checkoutBtn.style.cursor = 'not-allowed';
-            checkoutBtn.disabled = true;
         }
     } else {
         banner.style.display = 'none';
         if (checkoutBtn) {
-            checkoutBtn.innerHTML = 'Finalizar Pedido no WhatsApp <i class="fab fa-whatsapp"></i>';
-            checkoutBtn.style.background = 'var(--whatsapp)';
+            checkoutBtn.innerHTML = 'Finalizar Pedido <i class="fa-solid fa-arrow-right"></i>';
+            checkoutBtn.style.background = 'var(--primary-blue)';
             checkoutBtn.style.cursor = 'pointer';
-            checkoutBtn.disabled = false;
         }
     }
-}
-
-function isStoreClosed() {
-    return !isStoreOpenDB;
 }
 
 function getDefaultType(category) {
@@ -820,9 +981,10 @@ function renderCategoryFilters() {
     // 2. Atualiza os Cards Grandes (Grade de Categorias)
     if (gridContainer) {
         gridContainer.innerHTML = '';
-        appCategories.forEach(cat => {
+        appCategories.forEach((cat, index) => {
             const card = document.createElement('div');
-            card.className = 'category-card';
+            card.className = 'category-card reveal-up';
+            card.style.transitionDelay = `${index * 0.05}s`;
             card.setAttribute('data-category', cat.slug);
 
             const imgContainer = document.createElement('div');
@@ -904,15 +1066,26 @@ function renderProducts(filter = 'todos', searchQuery = '') {
         return;
     }
     
-    filteredProducts.forEach(prod => {
+    filteredProducts.forEach((prod, index) => {
         const card = document.createElement('div');
-        card.className = 'product-card';
+        card.className = 'product-card reveal-up';
+        card.style.transitionDelay = `${(index % 10) * 0.05}s`;
         card.dataset.id = prod.id;
         
-        // Check if there is a custom image, otherwise generate the SVG
-        const imageContent = prod.image 
-            ? `<img src="${prod.image}" alt="${prod.name}" class="product-img">` 
-            : getProductSVG(prod.type, prod.color, prod.name);
+        let wrapperClasses = 'product-img-wrapper';
+        if (prod.image) {
+            wrapperClasses += ' has-uploaded-image';
+            if (document.body.classList.contains('effect-skeleton')) {
+                imageContent = `
+                <div class="skeleton" style="width: 100%; height: 200px; position: absolute; top:0; left:0; z-index: 1;"></div>
+                <img src="${prod.image}" alt="${prod.name}" class="product-img" style="position:relative; z-index: 2; opacity: 0; transition: opacity 0.3s;" onload="this.style.opacity=1; this.previousElementSibling.style.display='none';">
+                `;
+            } else {
+                imageContent = `<img src="${prod.image}" alt="${prod.name}" class="product-img">`;
+            }
+        } else {
+            imageContent = getProductSVG(prod.type, prod.color, prod.name);
+        }
         
         // Check if item is already in cart to display active quantity
         const cartItem = (Array.isArray(cart) ? cart : []).find(item => item && item.id === prod.id);
@@ -928,7 +1101,7 @@ function renderProducts(filter = 'todos', searchQuery = '') {
         const displayCategoryName = categoryObj ? categoryObj.name : prod.category.replace(/-/g, ' ');
             
         card.innerHTML = `
-            <div class="product-img-wrapper" style="position:relative;">
+            <div class="${wrapperClasses}" style="position:relative;">
                 ${stockDisplay}
                 ${imageContent}
             </div>
@@ -1129,7 +1302,49 @@ function renderCart() {
     
     const sub = calculateSubtotal();
     cartSubtotal.textContent = `R$ ${sub.toFixed(2).replace('.', ',')}`;
-    cartTotal.textContent = `R$ ${sub.toFixed(2).replace('.', ',')}`;
+    
+    let discount = 0;
+    const discountLine = document.getElementById('discount-line');
+    const discountValue = document.getElementById('cart-discount');
+    
+    if (currentCoupon) {
+        if (sub >= currentCoupon.min_order) {
+            if (currentCoupon.type === 'percentage') {
+                discount = sub * (currentCoupon.value / 100);
+            } else {
+                discount = currentCoupon.value;
+            }
+            if (discount > sub) discount = sub;
+            
+            if (discountLine) discountLine.style.display = 'flex';
+            if (discountValue) discountValue.textContent = `- R$ ${discount.toFixed(2).replace('.', ',')}`;
+        } else {
+            // Remove coupon if below min order
+            currentCoupon = null;
+            if (discountLine) discountLine.style.display = 'none';
+            document.getElementById('coupon-message').textContent = 'Valor mínimo não atingido.';
+            document.getElementById('coupon-message').style.color = '#ef4444';
+        }
+    } else {
+        if (discountLine) discountLine.style.display = 'none';
+    }
+    
+    cartTotal.textContent = `R$ ${(sub - discount + currentDeliveryFee).toFixed(2).replace('.', ',')}`;
+    
+    // Mostra o frete no carrinho se for > 0
+    let cartDeliveryRow = document.getElementById('cart-delivery-row');
+    if (currentDeliveryFee > 0) {
+        if (!cartDeliveryRow) {
+            cartDeliveryRow = document.createElement('div');
+            cartDeliveryRow.id = 'cart-delivery-row';
+            cartDeliveryRow.className = 'cart-summary-row';
+            cartDeliveryRow.innerHTML = `<span>Frete</span><span id="cart-delivery-value"></span>`;
+            document.querySelector('.cart-summary').insertBefore(cartDeliveryRow, document.querySelector('.cart-total'));
+        }
+        document.getElementById('cart-delivery-value').textContent = `+ R$ ${currentDeliveryFee.toFixed(2).replace('.', ',')}`;
+    } else {
+        if (cartDeliveryRow) cartDeliveryRow.remove();
+    }
 }
 
 // --- LOCAL STORAGE ---
@@ -1178,6 +1393,70 @@ function openCheckoutModal() {
     if (cart.length === 0) {
         showToast('Seu carrinho está vazio. Adicione produtos antes de finalizar!');
         return;
+    }
+    
+    if (isStoreClosed()) {
+        showToast('A loja está fechada no momento.');
+        return;
+    }
+    
+    const subtotal = calculateSubtotal();
+    const configEntrega = storeSettings.configuracao_entrega || {};
+    if (configEntrega.minimo && subtotal < parseFloat(configEntrega.minimo)) {
+        showToast(`O valor mínimo para pedido é de R$ ${parseFloat(configEntrega.minimo).toFixed(2).replace('.', ',')}`);
+        return;
+    }
+
+    // Configura os bairros e taxas
+    const zoneSelect = document.getElementById('checkout-delivery-zone');
+    const zoneGroup = document.getElementById('delivery-zone-group');
+    if (zoneSelect && zoneGroup) {
+        zoneSelect.innerHTML = '<option value="" disabled selected>Selecione seu bairro...</option>';
+        if (configEntrega.zonas && configEntrega.zonas.length > 0) {
+            zoneGroup.style.display = 'block';
+            zoneSelect.required = true;
+            configEntrega.zonas.forEach((z, index) => {
+                let text = `${z.bairro} (+ R$ ${parseFloat(z.taxa).toFixed(2).replace('.', ',')})`;
+                if (configEntrega.gratis_acima > 0 && subtotal >= configEntrega.gratis_acima) {
+                    text = `${z.bairro} (Frete Grátis)`;
+                }
+                zoneSelect.innerHTML += `<option value="${index}">${text}</option>`;
+            });
+            // Option genérica caso não ache o bairro
+            let textPadrao = `Outro Bairro (+ R$ ${parseFloat(configEntrega.taxaPadrao || 0).toFixed(2).replace('.', ',')})`;
+            if (configEntrega.gratis_acima > 0 && subtotal >= configEntrega.gratis_acima) {
+                textPadrao = `Outro Bairro (Frete Grátis)`;
+            }
+            zoneSelect.innerHTML += `<option value="padrao">${textPadrao}</option>`;
+        } else {
+            zoneGroup.style.display = 'none';
+            zoneSelect.required = false;
+            // Se não tem zonas, aplica a taxa padrão direto
+            let taxaPadrao = parseFloat(configEntrega.taxaPadrao || 0);
+            if (configEntrega.gratis_acima > 0 && subtotal >= configEntrega.gratis_acima) taxaPadrao = 0;
+            currentDeliveryFee = taxaPadrao;
+            renderCart(); // Para atualizar o total com o frete
+        }
+    }
+
+    // Configura as formas de pagamento
+    const paymentSelect = document.getElementById('checkout-payment');
+    const configPgto = storeSettings.configuracao_pagamento || {};
+    if (paymentSelect) {
+        paymentSelect.innerHTML = '<option value="" disabled selected>Selecione uma opção...</option>';
+        const showDinheiro = configPgto.aceita_dinheiro !== undefined ? configPgto.aceita_dinheiro : true;
+        const showPix = configPgto.aceita_pix !== undefined ? configPgto.aceita_pix : true;
+        const showCartao = configPgto.aceita_cartao !== undefined ? configPgto.aceita_cartao : true;
+        
+        if (showDinheiro) paymentSelect.innerHTML += '<option value="Dinheiro">Dinheiro</option>';
+        if (showPix) paymentSelect.innerHTML += '<option value="PIX">PIX</option>';
+        if (showCartao) {
+            paymentSelect.innerHTML += '<option value="Cartão de Débito">Cartão de Débito (Na Entrega)</option>';
+            paymentSelect.innerHTML += '<option value="Cartão de Crédito">Cartão de Crédito (Na Entrega)</option>';
+        }
+        if (storeSettings.has_mercadopago) {
+            paymentSelect.innerHTML += '<option value="MercadoPago">Pagar Agora (Cartão / PIX)</option>';
+        }
     }
     
     checkoutModal.classList.add('active');
@@ -1544,6 +1823,16 @@ async function handleCheckoutFormSubmit(e) {
     e.preventDefault();
     
     const payment = document.getElementById('checkout-payment').value;
+    const notes = document.getElementById('checkout-notes').value;
+    const changeFor = document.getElementById('checkout-change').value;
+    
+    // Obter o bairro selecionado para o WhatsApp
+    const zoneSelect = document.getElementById('checkout-delivery-zone');
+    let deliveryZoneName = '';
+    if (zoneSelect && zoneSelect.options[zoneSelect.selectedIndex]) {
+        deliveryZoneName = zoneSelect.options[zoneSelect.selectedIndex].text;
+    }
+    
     let message = '';
     
     message += `Olá, gostaria de realizar um pedido.\n\n`;
@@ -1593,8 +1882,19 @@ async function handleCheckoutFormSubmit(e) {
         message += `*Endereço Comercial:* ${dbDeliveryAddress}\n`;
     }
     
-    message += `*Forma de Pagamento:* ${payment}\n\n`;
-    message += `-----------------------------\n`;
+    message += `*Forma de Pagamento:* ${payment}\n`;
+    if (payment === 'Dinheiro' && changeFor) {
+        message += `*Troco para:* R$ ${changeFor}\n`;
+    }
+    
+    if (deliveryZoneName) {
+        message += `*Bairro de Entrega:* ${deliveryZoneName.split('(+')[0].trim()}\n`;
+    }
+    
+    if (notes) {
+        message += `*Observações:* ${notes}\n`;
+    }
+    message += `\n-----------------------------\n`;
     message += `*PRODUTOS PEDIDOS:*\n`;
     
     // Assemble Products List
@@ -1604,15 +1904,90 @@ async function handleCheckoutFormSubmit(e) {
     });
     
     const subtotalNum = calculateSubtotal();
+    let discountVal = 0;
+    let couponCode = null;
+    
+    if (currentCoupon && subtotalNum >= currentCoupon.min_order) {
+        couponCode = currentCoupon.code;
+        if (currentCoupon.type === 'percentage') {
+            discountVal = subtotalNum * (currentCoupon.value / 100);
+        } else {
+            discountVal = currentCoupon.value;
+        }
+        if (discountVal > subtotalNum) discountVal = subtotalNum;
+    }
+    
+    const finalTotal = (subtotalNum - discountVal) + currentDeliveryFee;
     
     message += `-----------------------------\n`;
-    message += `*Total do Pedido: R$ ${subtotalNum.toFixed(2).replace('.', ',')}*\n\n`;
+    message += `*Subtotal:* R$ ${subtotalNum.toFixed(2).replace('.', ',')}\n`;
+    if (couponCode) {
+        message += `*Cupom Usado:* ${couponCode} (- R$ ${discountVal.toFixed(2).replace('.', ',')})\n`;
+    }
+    if (currentDeliveryFee > 0) {
+        message += `*Taxa de Entrega:* R$ ${currentDeliveryFee.toFixed(2).replace('.', ',')}\n`;
+    } else {
+        message += `*Taxa de Entrega:* Grátis\n`;
+    }
+    message += `*Total do Pedido: R$ ${finalTotal.toFixed(2).replace('.', ',')}*\n\n`;
     
     if (isStoreClosed()) {
-        message += `🚨 *AVISO: Pedido realizado fora do horário de funcionamento. A entrega será feita assim que abrirmos (às 08:00h).*`;
-    } else {
-        message += `Aguardando confirmação do pedido e taxa de entrega.`;
+        message += `🚨 *AVISO: Pedido realizado fora do horário de funcionamento.*`;
+    } else if (payment === 'PIX') {
+        const configPgto = storeSettings.configuracao_pagamento || {};
+        if (configPgto.pix_key) {
+            message += `✅ *PIX para pagamento:*\nTipo: ${configPgto.pix_tipo.toUpperCase()}\nChave: ${configPgto.pix_key}\n\nFavor enviar o comprovante.`;
+        }
     }
+    
+    // Se for MercadoPago, intercepta o envio via WhatsApp e envia para a Edge Function
+    if (payment === 'MercadoPago') {
+        const btnSubmit = e.target.querySelector('button[type="submit"]');
+        const originalBtnText = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando Pagamento Seguro...';
+
+        try {
+            const customerObj = currentCustomerType === 'cpf' 
+                ? { name: dbCustomerName, email: loggedInUser?.email || document.getElementById('cpf-nome').value + '@cliente.com' }
+                : { name: dbCustomerName, email: loggedInUser?.email || document.getElementById('cnpj-razao').value + '@cliente.com' };
+
+            const response = await fetch('https://SUA_SUPABASE_URL.supabase.co/functions/v1/create-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tenant_id: TENANT_ID,
+                    items: cart,
+                    customer: customerObj,
+                    back_urls: {
+                        success: window.location.href,
+                        failure: window.location.href,
+                        pending: window.location.href
+                    }
+                })
+            });
+            
+            const data = await response.json();
+            if (data.init_point) {
+                // Salvar pedido Pendente no Supabase antes de redirecionar?
+                // Ideal é o webhook mudar o status, mas por enquanto redireciona.
+                window.location.href = data.init_point;
+                return;
+            } else {
+                showToast('Erro ao gerar pagamento: ' + (data.error || 'Tente novamente.'));
+            }
+        } catch (err) {
+            console.error('Erro no MP:', err);
+            showToast('Erro de conexão ao gerar pagamento.');
+        }
+
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = originalBtnText;
+        return; // Impede o envio pro WhatsApp
+    }
+
     
     // Desabilitar botão durante o envio
     const btnSubmit = e.target.querySelector('button[type="submit"]');
@@ -1630,10 +2005,24 @@ async function handleCheckoutFormSubmit(e) {
                 customer_phone: dbCustomerPhone,
                 delivery_address: dbDeliveryAddress,
                 items: cart,
-                total: subtotalNum,
+                total: finalTotal,
                 status: 'Pendente',
-                tenant_id: TENANT_ID
+                tenant_id: TENANT_ID,
+                notes: notes || null,
+                payment_method: payment,
+                delivery_fee: currentDeliveryFee,
+                coupon_code: couponCode,
+                discount_amount: discountVal
             });
+            
+            if (error) {
+                console.error('Erro ao salvar pedido no Supabase:', error);
+            } else if (couponCode) {
+                // Incrementar número de usos do cupom
+                // Fazemos isso pegando o uso atual ou chamando uma RPC, mas vamos apenas fazer um +1 basico pelo Edge ou aqui (se RLS permitir update)
+                // Para simplificar no front, vamos apenas notificar.
+            }
+
             if (error) console.error('Erro ao salvar pedido no Supabase:', error);
         } catch (err) {
             console.error('Erro fatal ao tentar salvar no Supabase:', err);
@@ -1645,7 +2034,7 @@ async function handleCheckoutFormSubmit(e) {
 
     // Redirect to WhatsApp
     const encodedText = encodeURIComponent(message);
-    const phoneNumber = '5547992419566'; // Número para testar os pedidos
+    const phoneNumber = '5516992092552'; // Número para os pedidos
     const url = `https://wa.me/${phoneNumber}?text=${encodedText}`;
     
     // Open in a new tab
@@ -1666,6 +2055,103 @@ async function handleCheckoutFormSubmit(e) {
 
 // --- EVENT LISTENERS REGISTRATION ---
 function setupEventListeners() {
+    const zoneSelect = document.getElementById('checkout-delivery-zone');
+    if (zoneSelect) {
+        zoneSelect.addEventListener('change', (e) => {
+            const configEntrega = storeSettings.configuracao_entrega || {};
+            const subtotal = calculateSubtotal();
+            
+            if (configEntrega.gratis_acima > 0 && subtotal >= configEntrega.gratis_acima) {
+                currentDeliveryFee = 0;
+            } else {
+                if (e.target.value === 'padrao') {
+                    currentDeliveryFee = parseFloat(configEntrega.taxaPadrao || 0);
+                } else {
+                    const zona = configEntrega.zonas[parseInt(e.target.value)];
+                    currentDeliveryFee = zona ? parseFloat(zona.taxa) : 0;
+                }
+            }
+            renderCart();
+            // Atualiza o botão de submit pra mostrar o novo total
+            const btnSubmit = document.getElementById('btn-submit-order');
+            if (btnSubmit) btnSubmit.innerHTML = `CONFIRMAR (R$ ${(subtotal + currentDeliveryFee).toFixed(2).replace('.', ',')}) <i class="fa-brands fa-whatsapp"></i>`;
+        });
+    }
+
+    const paymentSelect = document.getElementById('checkout-payment');
+    const changeGroup = document.getElementById('checkout-change-group');
+    if (paymentSelect && changeGroup) {
+        paymentSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Dinheiro') {
+                changeGroup.style.display = 'block';
+            } else {
+                changeGroup.style.display = 'none';
+            }
+        });
+    }
+
+    const btnApplyCoupon = document.getElementById('btn-apply-coupon');
+    if (btnApplyCoupon) {
+        btnApplyCoupon.addEventListener('click', async () => {
+            const codeInput = document.getElementById('coupon-code');
+            const msgEl = document.getElementById('coupon-message');
+            const code = codeInput.value.trim().toUpperCase();
+            
+            if (!code) {
+                msgEl.textContent = 'Digite um código.';
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+            
+            btnApplyCoupon.textContent = '...';
+            btnApplyCoupon.disabled = true;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('coupons')
+                    .select('*')
+                    .eq('tenant_id', TENANT_ID)
+                    .eq('code', code)
+                    .eq('active', true)
+                    .single();
+                    
+                if (error || !data) {
+                    msgEl.textContent = 'Cupom inválido ou expirado.';
+                    msgEl.style.color = '#ef4444';
+                    currentCoupon = null;
+                } else {
+                    const subtotal = calculateSubtotal();
+                    if (subtotal < data.min_order_value) {
+                        msgEl.textContent = `Válido apenas para compras acima de R$ ${data.min_order_value.toFixed(2).replace('.', ',')}`;
+                        msgEl.style.color = '#ef4444';
+                        currentCoupon = null;
+                    } else if (data.max_uses && data.current_uses >= data.max_uses) {
+                        msgEl.textContent = 'Cupom esgotado.';
+                        msgEl.style.color = '#ef4444';
+                        currentCoupon = null;
+                    } else {
+                        currentCoupon = {
+                            code: data.code,
+                            type: data.discount_type,
+                            value: data.discount_value,
+                            min_order: data.min_order_value
+                        };
+                        msgEl.textContent = 'Cupom aplicado com sucesso!';
+                        msgEl.style.color = '#22c55e';
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                msgEl.textContent = 'Erro ao verificar cupom.';
+                msgEl.style.color = '#ef4444';
+            }
+            
+            btnApplyCoupon.textContent = 'Aplicar';
+            btnApplyCoupon.disabled = false;
+            renderCart();
+        });
+    }
+
     // Cart open/close triggers
     cartToggle.addEventListener('click', () => {
         cartSidebar.classList.add('active');
@@ -1820,3 +2306,154 @@ function setupEventListeners() {
     // Apply phone mask to registration form phone field
     setupPhoneMask('reg-phone');
 }
+
+// === WOW EFFECT (Animações Premium e Observer) ===
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Scroll Reveal Observer
+    const revealOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px"
+    };
+
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, revealOptions);
+
+    // Observa estáticos
+    document.querySelectorAll('.reveal-up, .reveal-scale').forEach(el => {
+        revealObserver.observe(el);
+    });
+
+    // Observador para cards dinâmicos
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) { 
+                    if (node.classList.contains('reveal-up') || node.classList.contains('reveal-scale')) {
+                        revealObserver.observe(node);
+                    }
+                    node.querySelectorAll('.reveal-up, .reveal-scale').forEach(child => {
+                        revealObserver.observe(child);
+                    });
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // 2. Sistema Dinâmico de Partículas de Fundo
+    const generateParticles = () => {
+        const container = document.getElementById('particles-container');
+        if (!container) return;
+        
+        container.innerHTML = ''; // Limpa antigas
+        
+        const isLight = document.body.classList.contains('theme-light');
+        const isFloating = document.body.classList.contains('effect-floating');
+        const isSnow = document.body.classList.contains('effect-snow');
+        
+        let particleCount = isLight ? 15 : 25;
+        if (isFloating) particleCount = 12;
+        if (isSnow) particleCount = 35; // Neve precisa de mais para o efeito ficar legal
+        
+        let floatingEmojis = ['🧊', '❄️', '🫧', '🍾', '🥂'];
+        if (window.customFloatingEmojis) {
+            floatingEmojis = window.customFloatingEmojis.split(',').map(e => e.trim()).filter(e => e);
+            if (floatingEmojis.length === 0) floatingEmojis = ['🧊', '🍾'];
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            
+            if (isFloating) {
+                particle.classList.add('floating-object');
+                particle.textContent = floatingEmojis[Math.floor(Math.random() * floatingEmojis.length)];
+                particle.style.fontSize = `${Math.random() * 20 + 15}px`;
+                particle.style.opacity = isLight ? '0.3' : '0.25';
+            } else {
+                particle.classList.add('particle');
+                if (isSnow) {
+                    particle.style.background = 'rgba(255, 255, 255, 0.8)';
+                    particle.style.borderRadius = '50%';
+                }
+                const size = isSnow ? (Math.random() * 4 + 2) : (Math.random() * 15 + 5); 
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+            }
+            
+            particle.style.left = `${Math.random() * 100}vw`;
+            const duration = Math.random() * (isSnow ? 10 : 20) + (isSnow ? 5 : 10);
+            const delay = Math.random() * 15;
+            particle.style.animationDuration = `${duration}s`;
+            particle.style.animationDelay = `${delay}s`;
+            
+            if (isSnow) {
+                particle.style.animationName = 'snowFall';
+            }
+            
+            container.appendChild(particle);
+        }
+    };
+
+    // Gera as partículas iniciais com pequeno atraso para dar tempo de aplicar as cores
+    setTimeout(generateParticles, 500);
+    
+    // Regera caso o tema mude via CMS ao vivo
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'CMS_LIVE_PREVIEW') {
+            setTimeout(generateParticles, 300);
+            setTimeout(initCursorGlow, 300);
+            setTimeout(initParallax, 300);
+        }
+    });
+
+    // 3. Cursor Mágico
+    let cursorEl = null;
+    const initCursorGlow = () => {
+        if (!document.body.classList.contains('effect-cursor')) {
+            if (cursorEl) {
+                cursorEl.style.display = 'none';
+            }
+            return;
+        }
+        
+        if (!cursorEl) {
+            cursorEl = document.createElement('div');
+            cursorEl.className = 'cursor-glow';
+            document.body.appendChild(cursorEl);
+            
+            document.addEventListener('mousemove', (e) => {
+                if (document.body.classList.contains('effect-cursor')) {
+                    // Centraliza o cursor (width 40px)
+                    cursorEl.style.transform = `translate(${e.clientX - 20}px, ${e.clientY - 20}px)`;
+                }
+            });
+        }
+        cursorEl.style.display = 'block';
+    };
+    initCursorGlow();
+
+    // 4. Parallax Avançado
+    const initParallax = () => {
+        // Remove listener antigo se houver
+        window.removeEventListener('scroll', parallaxScroll);
+        
+        if (document.body.classList.contains('effect-parallax')) {
+            window.addEventListener('scroll', parallaxScroll, { passive: true });
+        } else {
+            document.body.style.backgroundPositionY = '0px';
+        }
+    };
+    
+    const parallaxScroll = () => {
+        if (!document.body.classList.contains('effect-parallax')) return;
+        const scrolled = window.pageYOffset;
+        document.body.style.backgroundPositionY = -(scrolled * 0.3) + 'px';
+    };
+    initParallax();
+});

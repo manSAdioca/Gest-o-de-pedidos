@@ -193,7 +193,7 @@ const Categories = () => {
               }}
             />
           </div>
-          <button className="btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button className="btn btn-primary" onClick={() => openModal()}>
             <Plus size={18} /> Nova Categoria
           </button>
         </div>
@@ -205,50 +205,52 @@ const Categories = () => {
         ) : filteredCategories.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--gray)' }}>Nenhuma categoria encontrada.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Nome</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Cor</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Ícone</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Status</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500, textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCategories.map(cat => (
-                <tr key={cat.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '16px 24px', fontWeight: 500 }}>{cat.name}</td>
-                  <td style={{ padding: '16px 24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: cat.color }}></div>
-                      {cat.color}
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 24px', textTransform: 'capitalize' }}>{cat.icon_type}</td>
-                  <td style={{ padding: '16px 24px' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      fontSize: '0.8rem',
-                      background: cat.active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                      color: cat.active ? '#22c55e' : '#ef4444'
-                    }}>
-                      {cat.active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    <button onClick={() => openModal(cat)} style={{ background: 'none', border: 'none', color: 'var(--gray)', cursor: 'pointer', padding: '4px', marginRight: '8px' }} title="Editar">
-                      <Edit2 size={18} />
-                    </button>
-                    <button onClick={() => deleteCategory(cat.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Excluir">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
+          <div className="table-wrapper">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Nome</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Cor</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Ícone</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Status</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500, textAlign: 'right' }}>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredCategories.map(cat => (
+                  <tr key={cat.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '16px 24px', fontWeight: 500 }}>{cat.name}</td>
+                    <td style={{ padding: '16px 24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: cat.color }}></div>
+                        {cat.color}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px', textTransform: 'capitalize' }}>{cat.icon_type}</td>
+                    <td style={{ padding: '16px 24px' }}>
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        fontSize: '0.8rem',
+                        background: cat.active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: cat.active ? '#22c55e' : '#ef4444'
+                      }}>
+                        {cat.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                      <button onClick={() => openModal(cat)} style={{ background: 'none', border: 'none', color: 'var(--gray)', cursor: 'pointer', padding: '4px', marginRight: '8px' }} title="Editar">
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => deleteCategory(cat.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Excluir">
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

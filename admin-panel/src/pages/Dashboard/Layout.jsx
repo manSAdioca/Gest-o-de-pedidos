@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, ExternalLink, Bell, Tags, DollarSign, Power, CreditCard, HeadphonesIcon, Lock, Crown, Menu } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, ExternalLink, Bell, Tags, DollarSign, Power, CreditCard, HeadphonesIcon, Lock, Crown, Menu, Settings, Tag, FileText, Zap, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import OnboardingTutorial, { useOnboarding } from '../../components/OnboardingTutorial';
 
@@ -14,10 +14,11 @@ const DashboardLayout = () => {
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [announcements, setAnnouncements] = useState([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState({ name: 'Carregando...', logo_url: null });
   const { showOnboarding, setShowOnboarding, userId } = useOnboarding();
   
-  const isBlocked = tenantStatus === 'blocked' && role !== 'superadmin';
+  const isBlocked = (tenantStatus === 'blocked' || tenantStatus === 'suspended') && role !== 'superadmin';
 
   // Redireciona para faturas se tentar acessar rota bloqueada
   useEffect(() => {
@@ -94,7 +95,7 @@ const DashboardLayout = () => {
       if (error) {
         console.error('Erro ao buscar avisos:', error);
       } else if (data) {
-        console.log('Avisos recebidos:', data);
+        // Avisos recebidos
         setAnnouncements(data);
       }
     };
@@ -121,6 +122,9 @@ const DashboardLayout = () => {
       alert('Erro ao alterar status da loja.');
     }
   };
+
+  const toggleMobileSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeMobileSidebar = () => setIsSidebarOpen(false);
 
   useEffect(() => {
     // Se o usuário entrou na página de pedidos, tira o alerta
@@ -201,8 +205,13 @@ const DashboardLayout = () => {
         </div>
       )}
 
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div className="sidebar-backdrop" onClick={closeMobileSidebar}></div>
+      )}
+
       {/* SIDEBAR */}
-      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''} ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '24px 20px' }}>
           {tenantInfo.logo_url ? (
             <img 
@@ -222,6 +231,10 @@ const DashboardLayout = () => {
               {tenantInfo.name}
             </h2>
           </div>
+          
+          <button className="mobile-header" style={{ background: 'none', border: 'none', color: 'var(--white)', padding: '0', marginLeft: 'auto' }} onClick={closeMobileSidebar}>
+             <X size={24} />
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -263,6 +276,16 @@ const DashboardLayout = () => {
                 {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
               </NavLink>
 
+              <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={e => isBlocked && e.preventDefault()}>
+                <FileText size={20} /> Relatórios
+                {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
+              </NavLink>
+
+              <NavLink to="/coupons" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={e => isBlocked && e.preventDefault()}>
+                <Tag size={20} /> Cupons de Desconto
+                {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
+              </NavLink>
+
               <NavLink to="/users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={e => isBlocked && e.preventDefault()}>
                 <Users size={20} /> Acessos da Equipe
                 {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
@@ -270,6 +293,11 @@ const DashboardLayout = () => {
 
               <NavLink to="/invoices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <CreditCard size={20} /> Minha Assinatura
+              </NavLink>
+
+              <NavLink to="/integrations" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={e => isBlocked && e.preventDefault()}>
+                <Zap size={20} /> Integrações (Pro)
+                {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
               </NavLink>
             </>
           )}
@@ -280,6 +308,13 @@ const DashboardLayout = () => {
           <NavLink to="/support" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <HeadphonesIcon size={20} /> Ajuda / Suporte
           </NavLink>
+
+          {(role === 'admin' || role === 'superadmin') && (
+            <NavLink to="/settings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={e => isBlocked && e.preventDefault()}>
+              <Settings size={20} /> Configurações
+              {isBlocked && <Lock size={14} style={{ marginLeft: 'auto', color: '#ef4444' }} />}
+            </NavLink>
+          )}
           
           <a href="http://localhost:3000" target="_blank" rel="noreferrer" className="nav-item">
             <ExternalLink size={20} /> Ver Site Oficial
@@ -304,7 +339,7 @@ const DashboardLayout = () => {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main style={{ 
+      <main className="main-content" style={{ 
         flex: 1, 
         marginLeft: isSidebarCollapsed ? '80px' : 'var(--sidebar-w)', 
         display: 'flex', 
@@ -331,8 +366,17 @@ const DashboardLayout = () => {
           );
         })}
 
+        <div className="mobile-header" style={{ padding: '20px 40px 0 40px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+             <h2 style={{fontSize: '18px', margin: 0}}>{tenantInfo.name}</h2>
+          </div>
+          <button onClick={toggleMobileSidebar} style={{ background: 'none', border: 'none', color: 'var(--white)', cursor: 'pointer' }}>
+            <Menu size={28} />
+          </button>
+        </div>
+
         {/* TOPBAR */}
-        <header style={{ 
+        <header className="topbar" style={{ 
           height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
           padding: '0 40px', zIndex: 10,
           background: 'rgba(15, 23, 42, 0.4)',
@@ -341,6 +385,7 @@ const DashboardLayout = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <button 
+              className="desktop-sidebar-toggle"
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               style={{ 
                 background: 'transparent', border: '1px solid var(--border)', 
@@ -393,7 +438,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* CONTENT AREA */}
-        <div style={{ padding: '40px', flex: 1, overflowY: 'auto' }}>
+        <div className="content-area" style={{ padding: '40px', flex: 1, overflowY: 'auto' }}>
           {isBlocked && location.pathname !== '/invoices' ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
               <Lock size={64} color="#ef4444" style={{ marginBottom: '20px', opacity: 0.2 }} />

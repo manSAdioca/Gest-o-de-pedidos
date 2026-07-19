@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { CreditCard, CheckCircle, Clock, AlertTriangle, Plus, X, DollarSign, FileText, Search, ShieldBan } from 'lucide-react';
+import { Search, Plus, ExternalLink, RefreshCw, AlertTriangle, CheckCircle, Clock, ShieldBan, X, Trash, FileText, DollarSign, CreditCard } from 'lucide-react';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -17,6 +17,7 @@ const Invoices = () => {
     amount: '',
     due_date: '',
     notes: '',
+    payment_link: '',
   });
 
   useEffect(() => {
@@ -84,13 +85,36 @@ const Invoices = () => {
     }
   };
 
-  const cancelInvoice = async (id) => {
-    if (!window.confirm('Cancelar esta fatura?')) return;
+  const toggleInvoiceStatus = async (id, currentStatus) => {
+    const isCancelled = currentStatus === 'cancelled';
+    const actionText = isCancelled ? 'Reativar' : 'Cancelar (desativar)';
+    const newStatus = isCancelled ? 'pending' : 'cancelled';
+
+    if (!window.confirm(`${actionText} esta fatura?`)) return;
+
     try {
-      await supabase.from('invoices').update({ status: 'cancelled' }).eq('id', id);
+      await supabase.from('invoices').update({ status: newStatus }).eq('id', id);
       loadData();
     } catch (err) {
       alert('Erro: ' + err.message);
+    }
+  };
+
+  const deleteInvoice = async (id) => {
+    if (!window.confirm('ATENÇÃO: Deseja apagar esta fatura PERMANENTEMENTE? Esta ação não pode ser desfeita.')) return;
+    try {
+      const { error } = await supabase.from('invoices').delete().eq('id', id);
+      if (error) {
+        if (error.code === '42501') {
+          // RLS bloqueando DELETE, vamos usar um RPC se necessário, ou alertar.
+          alert('Erro de permissão. O Supabase bloqueou a exclusão (RLS).');
+        } else {
+          throw error;
+        }
+      }
+      loadData();
+    } catch (err) {
+      alert('Erro ao apagar: ' + err.message);
     }
   };
 
@@ -106,11 +130,11 @@ const Invoices = () => {
         due_date: newInvoice.due_date,
         status: 'pending',
         notes: newInvoice.notes || null,
-        // payment_link será preenchido pelo Mercado Pago futuramente
+        payment_link: newInvoice.payment_link || null,
       });
       if (error) throw error;
       setShowModal(false);
-      setNewInvoice({ tenant_id: '', amount: '', due_date: '', notes: '' });
+      setNewInvoice({ tenant_id: '', amount: '', due_date: '', notes: '', payment_link: '' });
       loadData();
     } catch (err) {
       alert('Erro ao criar fatura: ' + err.message);
@@ -141,8 +165,42 @@ const Invoices = () => {
   const filtered = invoices.filter(inv => {
     const matchStatus = filterStatus === 'all' || inv.status === filterStatus;
     const matchSearch = !searchQuery || inv.tenant_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchStatus && matchSearch;
+    const matchTenant = !filterTenant || inv.tenant_id === filterTenant;
+    return matchStatus && matchSearch && matchTenant;
   });
+
+  const updatePaymentLink = async (id, currentLink) => {
+    const newLink = window.prompt('Insira o Link de Pagamento (PIX) para esta fatura:\n(Pode ser Mercado Pago, Nubank, Appmax ou qualquer link de pagamento)', currentLink || '');
+    if (newLink === null) return; // cancelado pelo usuário
+
+    // Atualização otimista: reflete na tela imediatamente
+    setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, payment_link: newLink } : inv));
+
+    try {
+      // Usando RPC para forçar a atualização ignorando qualquer bloqueio do banco
+      const { error } = await supabase.rpc('update_payment_link', {
+        p_invoice_id: id,
+        p_link: newLink
+      });
+
+      if (error) {
+        console.error('[Supabase UPDATE erro]', error);
+        // Reverte atualização otimista em caso de erro
+        loadData();
+        alert(`Erro ao salvar o link:\n${error.message}\n\nCódigo: ${error.code}\n\nPossível causa: Não rodou o SQL. Rode o forcar_update_link.sql no Supabase.`);
+        return;
+      }
+
+      // Supabase UPDATE ok
+      // Recarrega para sincronizar com o banco
+      loadData();
+    } catch (err) {
+      console.error('[Erro inesperado]', err);
+      loadData();
+      alert('Erro inesperado: ' + err.message);
+    }
+  };
+
 
   // Summary stats
   const stats = {
@@ -206,12 +264,18 @@ const Invoices = () => {
             style={{ ...inputStyle, paddingLeft: '36px' }}
           />
         </div>
+        <select value={filterTenant} onChange={e => setFilterTenant(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
+          <option value="" style={{ background: '#1e293b', color: '#fff' }}>Todas as Lojas</option>
+          {tenants.map(t => (
+            <option key={t.id} value={t.id} style={{ background: '#1e293b', color: '#fff' }}>{t.name}</option>
+          ))}
+        </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
-          <option value="all">Todos os status</option>
-          <option value="pending">Pendentes</option>
-          <option value="paid">Pagas</option>
-          <option value="overdue">Atrasadas</option>
-          <option value="cancelled">Canceladas</option>
+          <option value="all" style={{ background: '#1e293b', color: '#fff' }}>Todos os status</option>
+          <option value="pending" style={{ background: '#1e293b', color: '#fff' }}>Pendentes</option>
+          <option value="paid" style={{ background: '#1e293b', color: '#fff' }}>Pagas</option>
+          <option value="overdue" style={{ background: '#1e293b', color: '#fff' }}>Atrasadas</option>
+          <option value="cancelled" style={{ background: '#1e293b', color: '#fff' }}>Canceladas</option>
         </select>
       </div>
 
@@ -229,7 +293,7 @@ const Invoices = () => {
                 <th>Vencimento</th>
                 <th>Valor</th>
                 <th>Status</th>
-                <th>Notas</th>
+                <th>Link PIX</th>
                 <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
@@ -245,32 +309,64 @@ const Invoices = () => {
                     R$ {Number(invoice.amount).toFixed(2).replace('.', ',')}
                   </td>
                   <td>{getStatusBadge(invoice.status, invoice.due_date)}</td>
-                  <td style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {invoice.notes || '—'}
+                  <td style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {invoice.payment_link ? (
+                      <a href={invoice.payment_link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', fontWeight: 500, textDecoration: 'underline' }}>
+                        {invoice.payment_link}
+                      </a>
+                    ) : (
+                      'Sem Link'
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                      {invoice.status !== 'paid' && (
                         <>
+                          {invoice.status !== 'cancelled' && (
+                            <>
+                              <button
+                                onClick={() => updatePaymentLink(invoice.id, invoice.payment_link)}
+                                title="Inserir / Editar Link PIX"
+                                style={{ padding: '5px 8px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', color: '#60a5fa', fontSize: '12px', cursor: 'pointer' }}
+                              >
+                                🔗 Link
+                              </button>
+                              <button
+                                onClick={() => markAsPaid(invoice.id)}
+                                style={{ padding: '5px 12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', color: '#22c55e', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                              >
+                                ✓ Baixa
+                              </button>
+                              <button
+                                onClick={() => blockTenantNow(invoice.tenant_id)}
+                                title="Bloquear loja agora"
+                                style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}
+                              >
+                                <ShieldBan size={14} />
+                              </button>
+                            </>
+                          )}
                           <button
-                            onClick={() => markAsPaid(invoice.id)}
-                            style={{ padding: '5px 12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', color: '#22c55e', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                            onClick={() => toggleInvoiceStatus(invoice.id, invoice.status)}
+                            title={invoice.status === 'cancelled' ? 'Reativar fatura' : 'Desativar fatura'}
+                            style={{ 
+                              padding: '5px 8px', 
+                              background: invoice.status === 'cancelled' ? 'rgba(59,130,246,0.1)' : 'rgba(100,116,139,0.1)', 
+                              border: `1px solid ${invoice.status === 'cancelled' ? 'rgba(59,130,246,0.3)' : 'rgba(100,116,139,0.3)'}`, 
+                              borderRadius: '6px', 
+                              color: invoice.status === 'cancelled' ? '#60a5fa' : '#94a3b8', 
+                              fontSize: '12px', cursor: 'pointer',
+                              fontWeight: invoice.status === 'cancelled' ? 600 : 'normal'
+                            }}
                           >
-                            ✓ Dar Baixa
+                            {invoice.status === 'cancelled' ? '↻ Reativar' : '🚫 Desativar'}
                           </button>
                           <button
-                            onClick={() => blockTenantNow(invoice.tenant_id)}
-                            title="Bloquear loja agora"
+                            onClick={() => deleteInvoice(invoice.id)}
+                            title="Apagar fatura permanentemente"
                             style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}
                           >
-                            <ShieldBan size={14} />
-                          </button>
-                          <button
-                            onClick={() => cancelInvoice(invoice.id)}
-                            title="Cancelar fatura"
-                            style={{ padding: '5px 8px', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '6px', color: '#94a3b8', fontSize: '12px', cursor: 'pointer' }}
-                          >
-                            <X size={14} />
+                            <Trash size={14} />
                           </button>
                         </>
                       )}
@@ -309,9 +405,9 @@ const Invoices = () => {
                   onChange={e => setNewInvoice({...newInvoice, tenant_id: e.target.value})}
                   style={inputStyle}
                 >
-                  <option value="">Selecione a loja...</option>
+                  <option value="" style={{ background: '#1e293b', color: '#fff' }}>Selecione a loja...</option>
                   {tenants.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                    <option key={t.id} value={t.id} style={{ background: '#1e293b', color: '#fff' }}>{t.name}</option>
                   ))}
                 </select>
               </div>
@@ -338,6 +434,16 @@ const Invoices = () => {
                 </div>
               </div>
               <div>
+                <label style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>Link de Pagamento (PIX) *</label>
+                <input
+                  type="text"
+                  placeholder="https://link.mercadopago.com.br/..."
+                  value={newInvoice.payment_link}
+                  onChange={e => setNewInvoice({...newInvoice, payment_link: e.target.value})}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
                 <label style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>Observações</label>
                 <textarea
                   placeholder="Ex: Mensalidade Julho/2026..."
@@ -348,7 +454,7 @@ const Invoices = () => {
                 />
               </div>
               <div style={{ padding: '12px', background: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.15)', fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>
-                💡 O link de pagamento via <strong style={{ color: '#60a5fa' }}>Mercado Pago</strong> será gerado automaticamente assim que a integração for ativada. Por enquanto, a fatura será criada sem link de pagamento.
+                💡 Você pode colar o link do Mercado Pago, Appmax ou Nubank. O lojista verá o link no painel dele para realizar o pagamento.
               </div>
             </div>
 

@@ -15,6 +15,11 @@ const Products = () => {
   const [editingId, setEditingId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxProducts, setMaxProducts] = useState(null);
+
+  // Global Catalog states
+  const [showGlobalCatalog, setShowGlobalCatalog] = useState(false);
+  const [globalProducts, setGlobalProducts] = useState([]);
+  const [globalCatalogSearch, setGlobalCatalogSearch] = useState('');
   
   const [formData, setFormData] = useState({
     productName: '',
@@ -61,11 +66,21 @@ const Products = () => {
         .from('products')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
 
       if (error) throw error;
+      
       setCategories(catData || []);
       setProducts(data || []);
+      
+      // Load Global Catalog
+      const { data: globalData } = await supabase
+        .from('global_products')
+        .select('*')
+        .order('name', { ascending: true });
+        
+      if (globalData) setGlobalProducts(globalData);
+      
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
     } finally {
@@ -260,9 +275,9 @@ const Products = () => {
         ) : (
           filteredProducts.map(product => (
             <div key={product.id} className="glass" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ height: '180px', background: 'rgba(0,0,0,0.3)', position: 'relative' }}>
+              <div style={{ height: '180px', background: product.image_url ? '#ffffff' : 'rgba(0,0,0,0.3)', padding: product.image_url ? '10px' : '0', position: 'relative' }}>
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray)' }}>Sem Imagem</div>
                 )}
@@ -318,7 +333,18 @@ const Products = () => {
               <X size={24} />
             </button>
             
-            <h2 style={{ marginBottom: '24px' }}>{editingId ? 'Editar Produto' : 'Novo Produto'}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2>{editingId ? 'Editar Produto' : 'Novo Produto'}</h2>
+              {!editingId && (
+                <button 
+                  onClick={() => setShowGlobalCatalog(true)}
+                  type="button"
+                  style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 'bold' }}
+                >
+                  <ImageIcon size={14} /> Importar do Catálogo
+                </button>
+              )}
+            </div>
             
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -385,6 +411,77 @@ const Products = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Global Catalog Sub-Modal */}
+      {showGlobalCatalog && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+        }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column', padding: '30px', position: 'relative', background: 'var(--bg-sidebar)' }}>
+            <button 
+              onClick={() => setShowGlobalCatalog(false)}
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--gray)', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+            
+            <h2 style={{ marginBottom: '5px' }}>Catálogo Global</h2>
+            <p style={{ color: 'var(--gray)', marginBottom: '20px', fontSize: '14px' }}>Clique em um produto para importar as informações automaticamente.</p>
+            
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray)' }} />
+              <input 
+                type="text" 
+                className="form-control" 
+                style={{ paddingLeft: '38px', width: '100%' }} 
+                placeholder="Buscar por nome ou categoria..."
+                value={globalCatalogSearch}
+                onChange={(e) => setGlobalCatalogSearch(e.target.value)}
+              />
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px', paddingRight: '10px' }}>
+              {globalProducts
+                .filter(p => p.name.toLowerCase().includes(globalCatalogSearch.toLowerCase()) || p.category_slug.toLowerCase().includes(globalCatalogSearch.toLowerCase()))
+                .map(prod => (
+                  <div 
+                    key={prod.id} 
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        productName: prod.name,
+                        category: prod.category_slug,
+                        description: prod.description || '',
+                        image_url: prod.image_url || ''
+                      });
+                      setShowGlobalCatalog(false);
+                    }}
+                    style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s', ':hover': { borderColor: 'var(--primary)' } }}
+                  >
+                    <div style={{ height: '120px', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
+                      {prod.image_url ? (
+                        <img src={prod.image_url} alt={prod.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <ImageIcon size={40} style={{ color: '#ccc' }} />
+                      )}
+                    </div>
+                    <div style={{ padding: '12px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>{prod.category_slug}</div>
+                      <div style={{ color: 'var(--text-main)', fontSize: '14px', fontWeight: 'bold' }}>{prod.name}</div>
+                    </div>
+                  </div>
+              ))}
+              {globalProducts.length === 0 && (
+                <div style={{ gridColumn: '1 / -1', color: 'var(--gray)', textAlign: 'center', padding: '40px' }}>
+                  Nenhum produto global encontrado.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -68,24 +68,74 @@ const steps = [
     tip: '💡 Registre todas as transações para ter uma visão precisa do seu negócio.',
   },
   {
+    id: 'reports',
+    icon: <LayoutDashboard size={40} />, // Fallback icon
+    color: '#8b5cf6',
+    gradient: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.02))',
+    title: 'Relatórios — Suas Métricas',
+    description: 'Acompanhe gráficos de vendas, produtos mais vendidos e o desempenho geral da sua loja para tomar decisões mais inteligentes.',
+    highlight: '/reports',
+    tip: '💡 Use os relatórios para planejar suas próximas promoções.',
+  },
+  {
+    id: 'coupons',
+    icon: <Tags size={40} />,
+    color: '#ec4899',
+    gradient: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(236,72,153,0.02))',
+    title: 'Cupons de Desconto',
+    description: 'Crie cupons promocionais para seus clientes. Defina valor fixo ou porcentagem, data de validade e limite de uso.',
+    highlight: '/coupons',
+    tip: '💡 Cupons de primeira compra ajudam a atrair novos clientes!',
+  },
+  {
     id: 'users',
     icon: <Users size={40} />,
     color: '#06b6d4',
     gradient: 'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.02))',
-    title: 'Equipe — Gerencie seus Funcionários',
+    title: 'Acessos da Equipe',
     description: 'Crie contas para seus funcionários! Eles terão acesso ao painel para gerenciar pedidos, mas sem acesso às áreas financeiras e administrativas.',
     highlight: '/users',
     tip: '💡 Funcionários veem apenas Pedidos, Produtos e Categorias — sem acesso ao financeiro.',
+  },
+  {
+    id: 'subscription',
+    icon: <CreditCard size={40} />,
+    color: '#f59e0b',
+    gradient: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.02))',
+    title: 'Minha Assinatura',
+    description: 'Gerencie seu plano atual, visualize suas faturas e faça upgrades na sua assinatura diretamente por aqui.',
+    highlight: '/subscription',
+    tip: '💡 Mantenha sua assinatura em dia para não ter a loja pausada.',
+  },
+  {
+    id: 'integrations',
+    icon: <Rocket size={40} />,
+    color: '#6366f1',
+    gradient: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(99,102,241,0.02))',
+    title: 'Integrações (Pro)',
+    description: 'Conecte sua loja com ferramentas externas, como gateways de pagamento (Mercado Pago, Stripe) e outras facilidades.',
+    highlight: '/integrations',
+    tip: '💡 As integrações automatizam o seu fluxo de trabalho.',
   },
   {
     id: 'support',
     icon: <HeadphonesIcon size={40} />,
     color: '#f43f5e',
     gradient: 'linear-gradient(135deg, rgba(244,63,94,0.12), rgba(244,63,94,0.02))',
-    title: 'Suporte — Estamos Aqui!',
+    title: 'Ajuda / Suporte',
     description: 'Teve algum problema ou dúvida? Abra um ticket de suporte e nossa equipe vai te ajudar rapidamente pelo painel ou WhatsApp.',
     highlight: '/support',
     tip: '💡 Resposta em até 24 horas úteis!',
+  },
+  {
+    id: 'settings',
+    icon: <LayoutDashboard size={40} />,
+    color: '#64748b',
+    gradient: 'linear-gradient(135deg, rgba(100,116,139,0.12), rgba(100,116,139,0.02))',
+    title: 'Configurações',
+    description: 'Ajuste os dados da sua loja, horário de funcionamento, taxas de entrega e outras preferências gerais.',
+    highlight: '/settings',
+    tip: '💡 Não esqueça de preencher corretamente o horário de funcionamento!',
   },
   {
     id: 'done',
@@ -127,7 +177,7 @@ const OnboardingTutorial = ({ onComplete, userId }) => {
         .eq('id', userId);
     }
     // Salva também no localStorage como fallback
-    localStorage.setItem('onboarding_completed_v1', 'true');
+    localStorage.setItem('onboarding_completed_v2', 'true');
   };
 
   const handleComplete = async () => {
@@ -363,6 +413,14 @@ export const useOnboarding = () => {
     if (!user?.id) return;
 
     const checkOnboarding = async () => {
+      // Força mostrar o tutorial novo (v2) se não tiver no localStorage
+      const localV2 = localStorage.getItem('onboarding_completed_v2');
+      if (!localV2) {
+        setUserId(user.id);
+        setTimeout(() => setShowOnboarding(true), 800);
+        return;
+      }
+
       // Busca o status do onboarding no perfil do usuário
       const { data, error } = await supabase
         .from('profiles')
@@ -370,21 +428,10 @@ export const useOnboarding = () => {
         .eq('id', user.id)
         .single();
 
-      if (error || !data) {
-        // Fallback: usa localStorage se não conseguiu buscar do banco
-        const local = localStorage.getItem('onboarding_completed_v1');
-        if (!local) setTimeout(() => setShowOnboarding(true), 800);
-        return;
-      }
+      if (error || !data) return;
 
       // Superadmin nunca vê o tutorial
       if (data.role === 'superadmin') return;
-
-      // Se não completou ainda, mostra o tutorial
-      if (!data.onboarding_completed) {
-        setUserId(user.id);
-        setTimeout(() => setShowOnboarding(true), 800);
-      }
     };
 
     checkOnboarding();

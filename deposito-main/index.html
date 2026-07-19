@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Distribuidora Imperatriz - Atacado e Varejo de Bebidas</title>
+    <!-- Favicon Padrão da Loja -->
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
     
     <!-- SEO Meta Tags -->
     <meta name="description" content="Distribuidora Imperatriz - O melhor atacado e varejo de bebidas da região. Entrega rápida de cervejas, destilados, refrigerantes, energéticos, sucos, gelo e carvão. Compre para sua casa ou empresa.">
@@ -58,6 +60,11 @@
     <div id="store-closed-banner" class="store-closed-banner" style="display: none;">
         <i class="fa-solid fa-clock"></i> 
         <span>A loja está <strong>fechada</strong> no momento. Seu pedido será entregue assim que abrirmos (às 08:00).</span>
+    </div>
+
+    <!-- BACKGROUND PARTICLES -->
+    <div class="particles-container" id="particles-container">
+        <!-- Partículas serão injetadas via JS -->
     </div>
 
     <!-- HEADER -->
@@ -124,8 +131,8 @@
                     A <strong>Distribuidora Imperatriz</strong> tem o estoque completo que você precisa. Compre no atacado ou varejo com os melhores preços e entrega rápida em Orlândia e região.
                 </p>
                 
-                <div class="hero-actions">
-                    <a href="#produtos" class="btn btn-primary btn-glow btn-shimmer" id="cms-hero-btn-primary">
+                <div class="hero-actions reveal-up" style="transition-delay: 0.2s;">
+                    <a href="#produtos" class="btn btn-primary btn-glow-premium" id="cms-hero-btn-primary">
                         <i class="fa-solid fa-cart-shopping"></i> VER PRODUTOS <i class="fa-solid fa-arrow-right icon-arrow"></i>
                     </a>
                     <a href="#" class="btn btn-outline" id="hero-cnpj-btn">
@@ -141,7 +148,7 @@
                 </div>
             </div>
             
-            <div class="hero-image-wrapper">
+            <div class="hero-image-wrapper reveal-scale" style="transition-delay: 0.4s;">
                 <div class="hero-glow-back"></div>
                 <img src="assets/images/hero_new_composite.png" alt="Distribuidora Imperatriz Bebidas Premium" class="hero-image" id="cms-hero-image">
             </div>
@@ -318,11 +325,31 @@
             </div>
         </div>
         
+        <div class="cart-notes-container" style="padding: 15px; border-top: 1px solid rgba(255, 255, 255, 0.05); background: var(--bg-dark);">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label for="checkout-notes" style="font-size: 0.85rem;">Observações do Pedido (opcional)</label>
+                <textarea id="checkout-notes" rows="2" placeholder="Ex: Sem gelo, embalar para presente..." style="width: 100%; border-radius: 8px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; resize: vertical; outline: none;"></textarea>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="coupon-code" style="font-size: 0.85rem;">Cupom de Desconto</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="coupon-code" placeholder="Ex: BEMVINDO10" style="flex: 1; border-radius: 8px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; outline: none; text-transform: uppercase;">
+                    <button type="button" id="btn-apply-coupon" class="btn btn-primary" style="padding: 0 15px; font-size: 0.85rem; height: auto;">Aplicar</button>
+                </div>
+                <div id="coupon-message" style="font-size: 0.75rem; margin-top: 5px; font-weight: 600;"></div>
+            </div>
+        </div>
+        
         <div class="cart-footer" id="cart-footer">
             <div class="cart-summary">
                 <div class="summary-line">
                     <span>Subtotal:</span>
                     <span class="summary-value" id="cart-subtotal">R$ 0,00</span>
+                </div>
+                <div class="summary-line" id="discount-line" style="display: none; color: #ec4899;">
+                    <span>Desconto:</span>
+                    <span class="summary-value" id="cart-discount">- R$ 0,00</span>
                 </div>
                 <div class="summary-line highlight">
                     <span>Total estimado:</span>
@@ -367,15 +394,23 @@
                     <!-- Fields will be generated here -->
                 </div>
                 
+                <div class="form-group" id="delivery-zone-group" style="display: none;">
+                    <label for="checkout-delivery-zone">Bairro de Entrega *</label>
+                    <select id="checkout-delivery-zone" required>
+                        <option value="" disabled selected>Carregando bairros...</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="checkout-payment">Forma de Pagamento *</label>
                     <select id="checkout-payment" required>
-                        <option value="" disabled selected>Selecione uma opção...</option>
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="PIX">PIX</option>
-                        <option value="Cartão de Débito">Cartão de Débito</option>
-                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="" disabled selected>Carregando opções...</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="checkout-change-group" style="display: none;">
+                    <label for="checkout-change">Troco para (opcional)</label>
+                    <input type="text" id="checkout-change" placeholder="Ex: 50" autocomplete="off">
                 </div>
                 
                 <button type="submit" class="btn btn-primary btn-block btn-glow" id="btn-submit-order">

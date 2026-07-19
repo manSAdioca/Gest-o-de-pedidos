@@ -149,81 +149,83 @@ const Users = () => {
         ) : users.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--gray)' }}>Nenhum usuário encontrado.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>E-mail / Usuário</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Cargo (Acesso)</th>
-                <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500, textAlign: 'right' }}>Ações de Permissão</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(profile => (
-                <tr key={profile.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: profile.id === currentUser?.id ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}>
-                  <td style={{ padding: '16px 24px', fontWeight: 500 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ 
-                        width: '32px', height: '32px', borderRadius: '50%', 
-                        background: profile.role === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: profile.role === 'admin' ? '#eab308' : '#3b82f6'
-                      }}>
-                        {profile.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                      </div>
-                      <div>
-                        <div>{profile.email || 'Email Oculto'}</div>
-                        {profile.id === currentUser?.id && <span style={{ fontSize: '0.7rem', color: 'var(--neon-blue)', fontWeight: 700 }}>VOCÊ</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 24px' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      fontSize: '0.8rem',
-                      background: profile.role === 'admin' ? 'rgba(234, 179, 8, 0.1)' : (profile.role === 'inativo' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
-                      color: profile.role === 'admin' ? '#eab308' : (profile.role === 'inativo' ? '#ef4444' : '#3b82f6'),
-                      fontWeight: 600,
-                      textTransform: 'uppercase'
-                    }}>
-                      {profile.role === 'admin' ? 'Administrador' : (profile.role === 'inativo' ? 'Bloqueado' : 'Funcionário')}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                    {profile.id !== currentUser?.id ? (
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        {profile.role !== 'admin' && (
-                          <button onClick={() => changeRole(profile.id, 'admin')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#eab308', borderColor: '#eab308' }}>
-                            <Shield size={14} style={{ marginRight: '4px' }} /> Promover a Admin
-                          </button>
-                        )}
-                        {profile.role !== 'funcionario' && profile.role !== 'inativo' && (
-                          <button onClick={() => changeRole(profile.id, 'funcionario')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#3b82f6', borderColor: '#3b82f6' }}>
-                            <User size={14} style={{ marginRight: '4px' }} /> Tornar Funcionário
-                          </button>
-                        )}
-                        {profile.role !== 'inativo' && (
-                          <button onClick={() => changeRole(profile.id, 'inativo')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: '#ef4444' }}>
-                            <ShieldOff size={14} style={{ marginRight: '4px' }} /> Bloquear Acesso
-                          </button>
-                        )}
-                        {profile.role === 'inativo' && (
-                          <button onClick={() => changeRole(profile.id, 'user')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#22c55e', borderColor: '#22c55e' }}>
-                            <User size={14} style={{ marginRight: '4px' }} /> Desbloquear
-                          </button>
-                        )}
-                        <button onClick={() => handleDeleteUser(profile.id)} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'rgba(239, 68, 68, 0.7)', borderColor: 'rgba(239, 68, 68, 0.3)', marginLeft: '8px' }} title="Excluir Definitivamente">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <span style={{ color: 'var(--gray)', fontSize: '0.8rem' }}>Acesso Protegido</span>
-                    )}
-                  </td>
+          <div className="table-wrapper">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>E-mail / Usuário</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500 }}>Cargo (Acesso)</th>
+                  <th style={{ padding: '16px 24px', color: 'var(--gray)', fontWeight: 500, textAlign: 'right' }}>Ações de Permissão</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map(profile => (
+                  <tr key={profile.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: profile.id === currentUser?.id ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}>
+                    <td style={{ padding: '16px 24px', fontWeight: 500 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ 
+                          width: '32px', height: '32px', borderRadius: '50%', 
+                          background: profile.role === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: profile.role === 'admin' ? '#eab308' : '#3b82f6'
+                        }}>
+                          {profile.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
+                        </div>
+                        <div>
+                          <div>{profile.email || 'Email Oculto'}</div>
+                          {profile.id === currentUser?.id && <span style={{ fontSize: '0.7rem', color: 'var(--neon-blue)', fontWeight: 700 }}>VOCÊ</span>}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px' }}>
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        fontSize: '0.8rem',
+                        background: profile.role === 'admin' ? 'rgba(234, 179, 8, 0.1)' : (profile.role === 'inativo' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                        color: profile.role === 'admin' ? '#eab308' : (profile.role === 'inativo' ? '#ef4444' : '#3b82f6'),
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                      }}>
+                        {profile.role === 'admin' ? 'Administrador' : (profile.role === 'inativo' ? 'Bloqueado' : 'Funcionário')}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                      {profile.id !== currentUser?.id ? (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          {profile.role !== 'admin' && (
+                            <button onClick={() => changeRole(profile.id, 'admin')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#eab308', borderColor: '#eab308' }}>
+                              <Shield size={14} style={{ marginRight: '4px' }} /> Promover a Admin
+                            </button>
+                          )}
+                          {profile.role !== 'funcionario' && profile.role !== 'inativo' && (
+                            <button onClick={() => changeRole(profile.id, 'funcionario')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#3b82f6', borderColor: '#3b82f6' }}>
+                              <User size={14} style={{ marginRight: '4px' }} /> Tornar Funcionário
+                            </button>
+                          )}
+                          {profile.role !== 'inativo' && (
+                            <button onClick={() => changeRole(profile.id, 'inativo')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: '#ef4444' }}>
+                              <ShieldOff size={14} style={{ marginRight: '4px' }} /> Bloquear Acesso
+                            </button>
+                          )}
+                          {profile.role === 'inativo' && (
+                            <button onClick={() => changeRole(profile.id, 'user')} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#22c55e', borderColor: '#22c55e' }}>
+                              <User size={14} style={{ marginRight: '4px' }} /> Desbloquear
+                            </button>
+                          )}
+                          <button onClick={() => handleDeleteUser(profile.id)} className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'rgba(239, 68, 68, 0.7)', borderColor: 'rgba(239, 68, 68, 0.3)', marginLeft: '8px' }} title="Excluir Definitivamente">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--gray)', fontSize: '0.8rem' }}>Acesso Protegido</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

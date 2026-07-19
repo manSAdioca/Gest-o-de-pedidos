@@ -49,8 +49,9 @@ export const AuthProvider = ({ children }) => {
         setTenantId(data.tenant_id);
         
         if (data.tenant_id) {
-          const { data: tData } = await supabase.from('tenants').select('status').eq('id', data.tenant_id).single();
-          if (tData) setTenantStatus(tData.status);
+          // Estratégia do Porteiro: Usa o RPC para checar bloqueio automático por falta de pagamento (5 dias de tolerância)
+          const { data: tStatus } = await supabase.rpc('check_tenant_status', { p_tenant_id: data.tenant_id, p_tolerance_days: 5 });
+          if (tStatus) setTenantStatus(tStatus);
         }
       } else {
         // Perfil não encontrado no banco: desloga para evitar comportamento indefinido

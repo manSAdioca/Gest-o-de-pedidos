@@ -38,10 +38,15 @@ const Orders = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
+      
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
       let query = supabase
         .from('orders')
         .select('*')
         .eq('tenant_id', tenantId)
+        .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false });
 
       if (role !== 'superadmin' && tenantId) {
@@ -227,8 +232,29 @@ const Orders = () => {
                         {order.delivery_address || 'Retirada'}
                       </div>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', color: '#a1a1aa', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>ID: {order.id.substring(0, 8)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: '#a1a1aa' }}>ID: {order.id.substring(0, 8)}</span>
+                        
+                        <select
+                          value={order.status}
+                          onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                          style={{
+                            background: 'rgba(0,0,0,0.2)',
+                            border: '1px solid var(--border)',
+                            color: 'white',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                        >
+                          {COLUMNS.map(col => (
+                            <option key={col.id} value={col.id} style={{ color: '#000' }}>
+                              Mover: {col.title}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   ))}

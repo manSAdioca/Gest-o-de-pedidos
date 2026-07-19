@@ -131,21 +131,45 @@ const Plans = () => {
                   </div>
                 </div>
                 
-                <button 
-                  onClick={() => handleOpenModal(plan)}
-                  style={{ 
-                    width: '100%', padding: '12px', borderRadius: '12px', 
-                    background: 'rgba(255,255,255,0.05)', 
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-main)',
-                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s', position: 'relative', zIndex: 2,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                >
-                  <Edit2 size={16} /> Editar Plano
-                </button>
+                <div style={{ display: 'flex', gap: '8px', position: 'relative', zIndex: 2 }}>
+                  <button 
+                    onClick={() => handleOpenModal(plan)}
+                    style={{ 
+                      flex: 1, padding: '12px', borderRadius: '12px', 
+                      background: 'rgba(255,255,255,0.05)', 
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-main)',
+                      fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <Edit2 size={16} /> Editar
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      if (window.confirm(`Tem certeza que deseja excluir o plano "${plan.name}"?`)) {
+                        const { error } = await supabase.from('plans').delete().eq('id', plan.id);
+                        if (error) alert('Erro ao excluir: ' + error.message);
+                        else loadPlans();
+                      }
+                    }}
+                    style={{ 
+                      padding: '12px', borderRadius: '12px', 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      color: 'var(--danger)',
+                      fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                    title="Excluir Plano"
+                  >
+                    <span style={{ fontSize: '16px' }}>🗑️</span>
+                  </button>
+                </div>
               </div>
             );
           })}

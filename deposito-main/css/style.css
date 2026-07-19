@@ -857,6 +857,11 @@ ul {
     overflow: hidden;
 }
 
+.product-img-wrapper.has-uploaded-image {
+    background: #ffffff; /* Fundo branco para camuflar o fundo de imagens baixadas (JPG) */
+    padding: 5px; /* Menos padding para aproveitar melhor o espaço do card */
+}
+
 .product-img-wrapper::after {
     content: '';
     position: absolute;
@@ -864,6 +869,10 @@ ul {
     height: 60%;
     background: radial-gradient(circle, rgba(45, 107, 255, 0.1) 0%, transparent 60%);
     z-index: 1;
+}
+
+.product-img-wrapper.has-uploaded-image::after {
+    display: none; /* Remove o brilho azul no fundo branco */
 }
 
 .product-img {
@@ -2285,4 +2294,468 @@ ul {
 
 .auth-divider:not(:empty)::after {
     margin-left: .5em;
+}
+
+/* ==========================================================================
+   DYNAMIC THEME ENGINE STYLES
+   ========================================================================== */
+
+/* BACKGROUND TEXTURE */
+body.has-bg-texture {
+    background-image: var(--bg-texture), radial-gradient(circle at 10% 20%, rgba(0, 71, 255, 0.08) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(45, 107, 255, 0.08) 0%, transparent 40%) !important;
+    background-blend-mode: overlay;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* BUTTON STYLES */
+body.btn-style-square .btn,
+body.btn-style-square .product-card,
+body.btn-style-square .category-card {
+    border-radius: 4px !important;
+}
+
+body.btn-style-pill .btn {
+    border-radius: 50px !important;
+}
+
+/* ANIMATIONS 3D / EFFECTS */
+body.enable-animations .product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-neon-strong);
+}
+body.enable-animations .category-card:hover {
+    transform: translateY(-5px);
+}
+body.enable-animations .btn:hover {
+    transform: scale(1.05);
+}
+
+/* =======================================
+   THEME: GLASSMORPHISM 
+   ======================================= */
+body.theme-glass {
+    --bg-dark: rgba(10, 15, 30, 0.85); /* Mais translúcido se tiver textura atrás */
+}
+body.theme-glass .header {
+    background: rgba(3, 11, 34, 0.4) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+body.theme-glass .product-card,
+body.theme-glass .category-card,
+body.theme-glass .cart-sidebar,
+body.theme-glass .modal-content,
+body.theme-glass .stat-card,
+body.theme-glass .contact-info-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* =======================================
+   THEME: LIGHT (MINIMALISTA) 
+   ======================================= */
+body.theme-light {
+    --bg-dark: #f8fafc;
+    --text-main-color: #334155;
+    --text-heading-color: #0f172a;
+    --white: #0f172a; /* Inverte texto branco para escuro */
+    --gray-light: #64748b;
+    --header-bg: rgba(255, 255, 255, 0.95);
+    background-color: var(--bg-dark) !important;
+    background-image: none !important;
+    color: var(--text-main-color);
+}
+body.theme-light .header {
+    border-bottom: 1px solid #e2e8f0;
+}
+body.theme-light .header .nav-link {
+    color: #475569 !important;
+}
+body.theme-light .product-card,
+body.theme-light .category-card,
+body.theme-light .stat-card,
+body.theme-light .contact-info-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    color: var(--text-heading-color);
+}
+body.theme-light .product-price {
+    color: var(--primary-blue);
+}
+body.theme-light .modal-content,
+body.theme-light .cart-sidebar {
+    background: #ffffff !important;
+    color: var(--text-heading-color);
+    border-left: 1px solid #e2e8f0;
+}
+body.theme-light .cart-item,
+body.theme-light .cart-summary {
+    border-color: #e2e8f0;
+}
+body.theme-light .cart-header h2,
+body.theme-light .cart-item-title,
+body.theme-light .modal-header h2 {
+    color: var(--text-heading-color);
+}
+body.theme-light .input,
+body.theme-light select,
+body.theme-light textarea {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: var(--text-heading-color);
+}
+body.theme-light .store-logo-text h1 {
+    color: var(--text-heading-color) !important;
+}
+body.theme-light .section-title {
+    color: var(--text-heading-color);
+}
+body.theme-light .btn-outline {
+    border-color: #cbd5e1;
+    color: var(--text-heading-color);
+}
+body.theme-light .filter-btn {
+    background: #e2e8f0;
+    color: var(--text-main-color);
+}
+
+/* ==========================================================================
+   WOW EFFECT - PREMIUM ANIMATIONS & MICRO-INTERACTIONS
+   ========================================================================== */
+
+/* 1. SCROLL REVEAL (Intersection Observer Styles) */
+body.effect-reveal .reveal-up {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+body.effect-reveal .reveal-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+body.effect-reveal .reveal-up.visible, 
+body.effect-reveal .reveal-scale.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* 2. SKELETON LOADING (Shimmer Effect) */
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+    border-radius: var(--border-radius-sm);
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+}
+.theme-light .skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+/* 3. PREMIUM HOVER 3D (Substitui o hover básico) */
+body.effect-tilt .product-card {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+}
+body.effect-tilt .product-card:hover {
+    transform: translateY(-8px) scale(1.02) rotateX(2deg) rotateY(-2deg);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), var(--shadow-neon);
+}
+body.effect-tilt .product-card img {
+    transition: transform 0.5s ease;
+}
+body.effect-tilt .product-card:hover img {
+    transform: scale(1.1);
+}
+
+/* 4. BUTTON PREMIUM GLOW (Botão Checkout) */
+@keyframes border-dance {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+body.effect-glow #cms-hero-btn-primary,
+body.effect-glow #cart-checkout-btn,
+body.effect-glow .btn-glow-premium {
+    position: relative;
+    background: linear-gradient(45deg, var(--primary-blue), var(--neon-blue), var(--accent-gold), var(--primary-blue));
+    background-size: 300% 300%;
+    animation: border-dance 4s ease infinite;
+    z-index: 1;
+    overflow: hidden;
+    border: none !important;
+}
+body.effect-glow #cms-hero-btn-primary::before,
+body.effect-glow #cart-checkout-btn::before,
+body.effect-glow .btn-glow-premium::before {
+    content: '';
+    position: absolute;
+    top: 2px; right: 2px; bottom: 2px; left: 2px;
+    background-color: var(--bg-dark);
+    border-radius: inherit;
+    z-index: -1;
+    transition: background-color 0.3s ease;
+}
+body.effect-glow #cms-hero-btn-primary:hover::before,
+body.effect-glow #cart-checkout-btn:hover::before,
+body.effect-glow .btn-glow-premium:hover::before {
+    background-color: transparent;
+}
+body.theme-glass.effect-glow #cms-hero-btn-primary::before,
+body.theme-glass.effect-glow #cart-checkout-btn::before,
+body.theme-glass.effect-glow .btn-glow-premium::before {
+    background-color: rgba(10, 15, 30, 0.8);
+}
+
+/* 5. FLOATING PARTICLES (Background) */
+.particles-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+}
+.particle {
+    position: absolute;
+    bottom: -50px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+}
+.theme-glass .particle {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 10px rgba(255,255,255,0.1);
+}
+.theme-light .particle {
+    background: rgba(0, 71, 255, 0.05);
+}
+
+.floating-object {
+    position: absolute;
+    bottom: -100px;
+    animation: floatUpAndRotate linear infinite;
+    pointer-events: none;
+    z-index: 0;
+    user-select: none;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) rotate(0deg) translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) rotate(360deg) translateX(50px);
+        opacity: 0;
+    }
+}
+@keyframes floatUpAndRotate {
+    0% {
+        transform: translateY(0) rotate(0deg) translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-120vh) rotate(720deg) translateX(-50px);
+        opacity: 0;
+    }
+}
+
+/* 6. CURSOR MÁGICO (Glow Trail) */
+.cursor-glow {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 40px; height: 40px;
+    background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: screen;
+    opacity: 0.6;
+    transition: transform 0.1s ease-out;
+}
+.theme-light .cursor-glow {
+    background: radial-gradient(circle, var(--primary-blue) 0%, transparent 70%);
+    mix-blend-mode: multiply;
+}
+
+/* 7. PARALLAX EFFECT */
+body.effect-parallax {
+    background-attachment: fixed !important;
+    background-size: cover !important;
+    /* transition happens on scroll via JS */
+}
+
+/* ==========================================================================
+   O ARSENAL DE TEMAS E EFEITOS (EXPANSÃO)
+   ========================================================================== */
+
+/* === TEMAS GLOBAIS === */
+
+/* TEMA: CYBERPUNK */
+body.theme-cyberpunk {
+    --bg-dark: #050510;
+    --primary-blue: #00f3ff;
+    --neon-blue: #ff00ea;
+    --border-color: rgba(0, 243, 255, 0.3);
+    background-color: var(--bg-dark);
+    color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+}
+body.theme-cyberpunk .product-card, body.theme-cyberpunk .category-card {
+    background: rgba(10, 10, 20, 0.8);
+    border: 1px solid var(--neon-blue);
+    box-shadow: 0 0 10px rgba(255, 0, 234, 0.2);
+    border-radius: 0px;
+}
+body.theme-cyberpunk .header {
+    background: rgba(5, 5, 16, 0.95);
+    border-bottom: 2px solid var(--primary-blue);
+}
+body.theme-cyberpunk .btn {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* TEMA: NATURE */
+body.theme-nature {
+    --bg-dark: #f4f1ea;
+    --primary-blue: #2d6a4f;
+    --neon-blue: #40916c;
+    --text-main-color: #1b4332;
+    --border-color: rgba(45, 106, 79, 0.2);
+    background-color: var(--bg-dark);
+    color: var(--text-main-color);
+}
+body.theme-nature .product-card, body.theme-nature .category-card {
+    background: #ffffff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-radius: 20px;
+}
+body.theme-nature .header {
+    background: rgba(244, 241, 234, 0.95);
+    border-bottom: 1px solid var(--border-color);
+}
+body.theme-nature h1, body.theme-nature h2, body.theme-nature h3 {
+    color: #081c15;
+}
+
+/* TEMA: LUXURY */
+body.theme-luxury {
+    --bg-dark: #0a0a0a;
+    --primary-blue: #d4af37;
+    --neon-blue: #f3e5ab;
+    --text-main-color: #e0e0e0;
+    --border-color: rgba(212, 175, 55, 0.3);
+    background-color: var(--bg-dark);
+    color: var(--text-main-color);
+}
+body.theme-luxury .product-card, body.theme-luxury .category-card {
+    background: linear-gradient(145deg, #111111, #0a0a0a);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    border-radius: 4px;
+}
+body.theme-luxury h1, body.theme-luxury h2, body.theme-luxury h3 {
+    color: #d4af37;
+    font-family: 'Playfair Display', serif;
+    letter-spacing: 1px;
+}
+body.theme-luxury .header {
+    background: rgba(10, 10, 10, 0.98);
+    border-bottom: 1px solid var(--primary-blue);
+}
+
+/* === ESTILOS DE BOTÃO EXTRAS === */
+
+body.btn-style-neumorphism .btn {
+    background: var(--bg-dark);
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.5), -5px -5px 10px rgba(255,255,255,0.05);
+    border: none;
+    color: var(--primary-blue);
+}
+body.theme-light.btn-style-neumorphism .btn {
+    background: #e2e8f0;
+    box-shadow: 5px 5px 10px #cbd5e1, -5px -5px 10px #f8fafc;
+    color: var(--primary-blue);
+}
+
+body.btn-style-outline-glow .btn-primary {
+    background: transparent !important;
+    border: 2px solid var(--primary-blue) !important;
+    color: var(--primary-blue) !important;
+    box-shadow: 0 0 10px var(--primary-blue) inset, 0 0 10px var(--primary-blue);
+}
+
+body.btn-style-3d-press .btn {
+    border-bottom: 6px solid rgba(0,0,0,0.4) !important;
+    transform: translateY(0);
+    transition: all 0.1s;
+}
+body.btn-style-3d-press .btn:active {
+    border-bottom: 0px solid rgba(0,0,0,0.4) !important;
+    transform: translateY(6px);
+}
+
+/* === ULTRA EFEITOS === */
+
+/* Efeito Glitch Títulos */
+@keyframes glitch-anim {
+    0% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
+    20% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+    40% { clip-path: inset(50% 0 30% 0); transform: translate(2px, 2px); }
+    60% { clip-path: inset(20% 0 60% 0); transform: translate(-2px, -2px); }
+    80% { clip-path: inset(90% 0 2% 0); transform: translate(2px, 2px); }
+    100% { clip-path: inset(30% 0 50% 0); transform: translate(-2px, -2px); }
+}
+body.effect-glitch h1, body.effect-glitch h2, body.effect-glitch .hero-title {
+    position: relative;
+}
+body.effect-glitch h1::before, body.effect-glitch h2::before, body.effect-glitch .hero-title::before {
+    content: attr(data-text);
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    text-shadow: -2px 0 red, 2px 0 cyan;
+    animation: glitch-anim 2s infinite linear alternate-reverse;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.5;
+}
+
+/* Efeito Pulse */
+@keyframes pulse-anim {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+body.effect-pulse .btn-add-cart, body.effect-pulse #cart-checkout-btn, body.effect-pulse #cms-hero-btn-primary {
+    animation: pulse-anim 2s infinite;
+}
+
+/* Efeito Snow (Animação de queda de neve em vez de subida) */
+@keyframes snowFall {
+    0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) translateX(30px) rotate(360deg); opacity: 0; }
+}
+body.theme-light .filter-btn.active {
+    background: var(--primary-blue);
+    color: #ffffff;
 }

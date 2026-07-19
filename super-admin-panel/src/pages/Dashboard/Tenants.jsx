@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { ShieldBan, CheckCircle, Eye, Package, ShoppingCart, DollarSign, Edit3, ArrowRight, Check, Trash2 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { LayoutDashboard, Store, CreditCard, LogOut, Tags, Megaphone, Search, ArrowRight, Eye, ShieldBan, Package, DollarSign, ShoppingCart, Activity, Plus, Edit3, Trash2, Check, CheckCircle, Settings, X, Palette, Image as ImageIcon, MessageSquare, Phone, Sparkles, Zap } from 'lucide-react';
+
+import CustomToggle from '../../components/UI/CustomToggle';
+import ThemeCard from '../../components/UI/ThemeCard';
+import SectionSorter from '../../components/UI/SectionSorter';
 
 const Tenants = () => {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
+  const [visibleEmails, setVisibleEmails] = useState({});
 
   // Spy Mode States
   const [spyModal, setSpyModal] = useState(false);
@@ -51,7 +57,9 @@ const Tenants = () => {
     // Cards do Rodapé (footer banners)
     fb1Title: '', fb1Desc: '', fb1Icon: 'fa-truck-fast', fb1Color: '', fb1Bg: '',
     fb2Title: '', fb2Desc: '', fb2Icon: 'fa-headset',    fb2Color: '', fb2Bg: '',
-    fb3Title: '', fb3Desc: '', fb3Icon: 'fa-percent',    fb3Color: '', fb3Bg: ''
+    fb3Title: '', fb3Desc: '', fb3Icon: 'fa-percent',    fb3Color: '', fb3Bg: '',
+    // Inteligência Artificial
+    openai_api_key: '', ai_system_prompt: 'Você é um assistente virtual da nossa loja. Seu objetivo é ajudar os clientes a tirarem dúvidas e direcionar para o link do nosso site.'
   });
 
   useEffect(() => {
@@ -169,7 +177,11 @@ const Tenants = () => {
       // Billing
       phone: '', billing_day: '1', plan_type: 'monthly',
       primaryColor: '#cda434', marqueeBgColor: '#0047FF', bgDark: '#09090b', phoneText: '', phoneLink: '', mapUrl: '', heroTitle: '', heroDesc: '', heroImageUrl: '', heroImageFile: null, heroBtnSecondary: 'Comprar para Empresa', heroBtnPrimaryLink: '#produtos', heroBtnSecondaryLink: '#',
-      faviconUrl: '', faviconFile: null
+      faviconUrl: '', faviconFile: null,
+      theme: 'default', buttonStyle: 'rounded', bgTextureUrl: '', sectionOrder: 'hero,categories,products,about,contact',
+      effectParticles: true, effectGlow: true, effectSkeleton: true, effectTilt: true, effectReveal: true,
+      effectParallax: false, effectCursor: false, effectFloating: false,
+      effectGlitch: false, effectPulse: false, effectSnow: false, floatingEmojis: '🧊,🍾,🥂'
     });
     setWizardOpen(true);
   };
@@ -184,7 +196,11 @@ const Tenants = () => {
       // Billing
       phone: tenant.phone || '', billing_day: String(tenant.billing_day || '1'), plan_type: tenant.plan_type || 'monthly',
       primaryColor: '#cda434', marqueeBgColor: '#0047FF', bgDark: '#09090b', phoneText: '', phoneLink: '', mapUrl: '', heroTitle: '', heroDesc: '', heroImageUrl: '', heroImageFile: null, heroBtnSecondary: 'Comprar para Empresa', heroBtnPrimaryLink: '#produtos', heroBtnSecondaryLink: '#',
-      faviconUrl: '', faviconFile: null
+      faviconUrl: '', faviconFile: null,
+      theme: 'default', buttonStyle: 'rounded', bgTextureUrl: '', sectionOrder: 'hero,categories,products,about,contact',
+      effectParticles: true, effectGlow: true, effectSkeleton: true, effectTilt: true, effectReveal: true,
+      effectParallax: false, effectCursor: false, effectFloating: false,
+      effectGlitch: false, effectPulse: false, effectSnow: false, floatingEmojis: '🧊,🍾,🥂'
     };
     setWizardData(baseData);
     setWizardOpen(true);
@@ -193,8 +209,16 @@ const Tenants = () => {
       const { data } = await supabase.from('settings').select('value').eq('tenant_id', tenant.id).eq('key', 'site_customization').single();
       if (data && data.value) {
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-        setWizardData(prev => ({ ...prev, ...parsed }));
+        baseData = { ...baseData, ...parsed };
       }
+      
+      const { data: integData } = await supabase.from('tenant_integrations').select('openai_api_key, ai_system_prompt').eq('tenant_id', tenant.id).single();
+      if (integData) {
+        if (integData.openai_api_key) baseData.openai_api_key = integData.openai_api_key;
+        if (integData.ai_system_prompt) baseData.ai_system_prompt = integData.ai_system_prompt;
+      }
+      
+      setWizardData(baseData);
     } catch(e) {}
   };
 
@@ -346,7 +370,7 @@ const Tenants = () => {
                 html: finalBody
               })
             });
-            console.log('E-mail de boas vindas disparado com sucesso!');
+            // E-mail de boas vindas disparado com sucesso!
           }
         } catch (emailErr) {
           console.error("Erro ao enviar email de boas vindas:", emailErr);
@@ -386,6 +410,24 @@ const Tenants = () => {
         // Tipografia
         fontFamily: wizardData.fontFamily,
         borderRadius: wizardData.borderRadius,
+        // UI & Engine
+        theme: wizardData.theme,
+        buttonStyle: wizardData.buttonStyle,
+        bgTextureUrl: wizardData.bgTextureUrl,
+        sectionOrder: wizardData.sectionOrder,
+        // WOW Effects
+        effectParticles: wizardData.effectParticles,
+        effectGlow: wizardData.effectGlow,
+        effectTilt: wizardData.effectTilt,
+        effectReveal: wizardData.effectReveal,
+        effectSkeleton: wizardData.effectSkeleton,
+        effectParallax: wizardData.effectParallax,
+        effectCursor: wizardData.effectCursor,
+        effectFloating: wizardData.effectFloating,
+        effectGlitch: wizardData.effectGlitch,
+        effectPulse: wizardData.effectPulse,
+        effectSnow: wizardData.effectSnow,
+        floatingEmojis: wizardData.floatingEmojis,
         // Hero
         heroTag: wizardData.heroTag,
         heroTitle: wizardData.heroTitle,
@@ -435,6 +477,20 @@ const Tenants = () => {
           { onConflict: 'tenant_id,key' }
         );
       if (upsertErr) throw upsertErr;
+
+      // 5. Save AI Configurations
+      const { error: aiErr } = await supabase
+        .from('tenant_integrations')
+        .upsert(
+          { 
+            tenant_id: currentTenantId, 
+            openai_api_key: wizardData.openai_api_key, 
+            ai_system_prompt: wizardData.ai_system_prompt,
+            updated_at: new Date()
+          },
+          { onConflict: 'tenant_id' }
+        );
+      if (aiErr) console.error("Erro ao salvar integrações de IA:", aiErr);
 
       loadTenants();
       setWizardStep(3); // Success Screen
@@ -494,19 +550,15 @@ const Tenants = () => {
                     <div style={{ fontWeight: 600 }}>{t.name || 'Loja Sem Nome'}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t.slug || t.id}</div>
                     {t.profiles && t.profiles.length > 0 && (
-                      <div style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        ✉️ {window.visibleEmails?.[t.id] ? t.profiles[0].email : ''}
+                      <div style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button 
-                          onClick={() => {
-                            window.visibleEmails = { ...window.visibleEmails, [t.id]: !window.visibleEmails?.[t.id] };
-                            // Force re-render hack:
-                            setTenants([...tenants]);
-                          }}
+                          onClick={() => setVisibleEmails(prev => ({ ...prev, [t.id]: !prev[t.id] }))}
                           style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                           title="Mostrar/Ocultar E-mail"
                         >
-                          <Eye size={14} style={{ opacity: window.visibleEmails?.[t.id] ? 1 : 0.5 }} />
+                          <Eye size={16} style={{ opacity: visibleEmails[t.id] ? 1 : 0.5 }} />
                         </button>
+                        {visibleEmails[t.id] && <span style={{ color: 'var(--text-main)', fontSize: '13px' }}>{t.profiles[0].email}</span>}
                       </div>
                     )}
                   </td>
@@ -599,222 +651,329 @@ const Tenants = () => {
 
       {/* WIZARD MODAL (Criação e Personalização) */}
       {wizardOpen && (
-        <div className="modal" style={{ display: 'flex' }}>
-          <div className="modal-content" style={{ maxWidth: wizardStep === 2 ? '1000px' : '600px', maxHeight: '90vh', overflowY: 'auto', transition: 'max-width 0.3s ease' }}>
-            <button className="modal-close" onClick={() => setWizardOpen(false)}>✕</button>
-            <div className="modal-header" style={{ marginBottom: '15px' }}>
-              <h2>{wizardMode === 'create' ? 'Assistente de Criação' : 'Edição da Loja'}</h2>
-              
-              {/* Stepper Indicator */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' }}>
-                <div style={{ flex: 1, height: '4px', background: wizardStep >= 1 ? 'var(--primary)' : 'var(--border)', borderRadius: '2px' }}></div>
-                <div style={{ flex: 1, height: '4px', background: wizardStep >= 2 ? 'var(--primary)' : 'var(--border)', borderRadius: '2px' }}></div>
-                <div style={{ flex: 1, height: '4px', background: wizardStep >= 3 ? 'var(--success)' : 'var(--border)', borderRadius: '2px' }}></div>
+        <div className="modal" style={{ display: 'flex', padding: '20px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+          <div className="modal-content glass" style={{ 
+            width: '100%', 
+            maxWidth: wizardStep === 2 ? '1400px' : '700px', 
+            height: wizardStep === 2 ? '95vh' : 'auto', 
+            maxHeight: '95vh', 
+            overflow: 'hidden', 
+            transition: 'max-width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), height 0.4s ease', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            background: 'var(--bg-sidebar)', 
+            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '0'
+          }}>
+            
+            <div className="modal-header" style={{ padding: '24px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '22px' }}>{wizardMode === 'create' ? 'Assistente de Criação de Loja' : 'Edição e Personalização da Loja'}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', width: '300px' }}>
+                  <div style={{ flex: 1, height: '4px', background: wizardStep >= 1 ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '2px', transition: '0.3s' }}></div>
+                  <div style={{ flex: 1, height: '4px', background: wizardStep >= 2 ? 'var(--primary)' : 'rgba(255,255,255,0.1)', borderRadius: '2px', transition: '0.3s' }}></div>
+                  <div style={{ flex: 1, height: '4px', background: wizardStep >= 3 ? 'var(--success)' : 'rgba(255,255,255,0.1)', borderRadius: '2px', transition: '0.3s' }}></div>
+                </div>
               </div>
+              <button onClick={() => setWizardOpen(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--gray)', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s', ':hover': { background: 'rgba(255,255,255,0.1)', color: '#fff' } }}>
+                <X size={20} />
+              </button>
             </div>
 
-            <form onSubmit={handleNextStep}>
+            <form onSubmit={handleNextStep} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               
               {/* PASSO 1: DADOS BÁSICOS */}
               {wizardStep === 1 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <h4 style={{ color: 'var(--primary)' }}>Passo 1: Dados do Inquilino</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '30px', overflowY: 'auto' }}>
                   
-                  <div className="form-group">
-                    <label>Nome do Estabelecimento</label>
-                    <input type="text" className="input" required value={wizardData.name} onChange={e => setWizardData({...wizardData, name: e.target.value})} placeholder="Ex: Bebidas do João" />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Subdomínio (Link)</label>
-                    <input type="text" className="input" required disabled={wizardMode === 'edit'} value={wizardData.slug} onChange={e => setWizardData({...wizardData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})} placeholder="Ex: bebidasjoao" />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Domínio Personalizado (Opcional)</label>
-                    <input type="text" className="input" value={wizardData.custom_domain} onChange={e => setWizardData({...wizardData, custom_domain: e.target.value})} placeholder="Ex: www.minhaloja.com.br" />
-                    <span style={{fontSize:'12px', color:'var(--text-muted)'}}>Se preenchido, a loja responderá neste domínio em vez do subdomínio padrão.</span>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Logo da Loja</label>
-                    <input type="file" accept="image/*" className="input" onChange={e => setWizardData({...wizardData, logoFile: e.target.files[0]})} />
-                    {wizardMode === 'edit' && wizardData.logoUrl && !wizardData.logoFile && <span style={{fontSize:'12px', color:'var(--success)'}}>Logo existente será mantida.</span>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Plano de Assinatura</label>
-                    <select className="input" value={wizardData.plan_id} onChange={e => setWizardData({...wizardData, plan_id: e.target.value})}>
-                      <option value="">Nenhum</option>
-                      {plans.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} - R$ {Number(p.price).toFixed(2)}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '10px 0' }} />
-                  <h4 style={{ color: 'var(--primary)', margin: '0 0 10px' }}>💳 Configuração de Cobrança</h4>
-                  <div className="form-group">
-                    <label>WhatsApp do Dono (com DDD)</label>
-                    <input type="tel" className="input" value={wizardData.phone} onChange={e => setWizardData({...wizardData, phone: e.target.value})} placeholder="Ex: 31999998888" />
-                    <span style={{fontSize:'12px', color:'var(--text-muted)'}}>Usado para envio de lembretes de vencimento.</span>
-                  </div>
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>Dia de Cobrança (1–28)</label>
-                      <input type="number" className="input" min="1" max="28" value={wizardData.billing_day} onChange={e => setWizardData({...wizardData, billing_day: e.target.value})} placeholder="Ex: 10" />
-                      <span style={{fontSize:'12px', color:'var(--text-muted)'}}>Dia do mês em que a fatura será gerada automaticamente.</span>
+                  {/* Bloco 1: Identidade da Loja */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                      <div style={{ padding: '8px', background: 'rgba(205, 164, 52, 0.1)', color: 'var(--primary)', borderRadius: '8px' }}><Store size={20} /></div>
+                      <h4 style={{ margin: 0, fontSize: '16px' }}>Identidade da Empresa</h4>
                     </div>
-                    <div className="form-group">
-                      <label>Tipo de Plano</label>
-                      <select className="input" value={wizardData.plan_type} onChange={e => setWizardData({...wizardData, plan_type: e.target.value})}>
-                        <option value="monthly">Mensal</option>
-                        <option value="annual">Anual (com desconto)</option>
-                      </select>
+                    <div className="form-grid">
+                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                        <label>Nome do Estabelecimento</label>
+                        <input type="text" className="input" required value={wizardData.name} onChange={e => setWizardData({...wizardData, name: e.target.value})} placeholder="Ex: Bebidas do João" />
+                      </div>
+                      <div className="form-group">
+                        <label>Subdomínio (Link da Vitrine)</label>
+                        <input type="text" className="input" required disabled={wizardMode === 'edit'} value={wizardData.slug} onChange={e => setWizardData({...wizardData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})} placeholder="Ex: bebidasjoao" />
+                      </div>
+                      <div className="form-group">
+                        <label>Domínio Personalizado (Opcional)</label>
+                        <input type="text" className="input" value={wizardData.custom_domain} onChange={e => setWizardData({...wizardData, custom_domain: e.target.value})} placeholder="Ex: www.minhaloja.com.br" />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                        <label>Logo Principal da Loja</label>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                          <input type="file" accept="image/*" className="input" onChange={e => setWizardData({...wizardData, logoFile: e.target.files[0]})} style={{ flex: 1, padding: '10px' }} />
+                          {wizardMode === 'edit' && wizardData.logoUrl && !wizardData.logoFile && <div style={{ padding: '6px 12px', background: 'rgba(34,197,94,0.1)', color: 'var(--success)', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>Logo Atual Mantida</div>}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
+                  {/* Bloco 2: Faturamento */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                      <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderRadius: '8px' }}><CreditCard size={20} /></div>
+                      <h4 style={{ margin: 0, fontSize: '16px' }}>Plano e Faturamento</h4>
+                    </div>
+                    <div className="form-grid">
+                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                        <label>Plano de Assinatura</label>
+                        <select className="input" value={wizardData.plan_id} onChange={e => setWizardData({...wizardData, plan_id: e.target.value})}>
+                          <option value="">Nenhum Plano (Gratuito/Teste)</option>
+                          {plans.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} - R$ {Number(p.price).toFixed(2)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>WhatsApp do Dono</label>
+                        <input type="tel" className="input" value={wizardData.phone} onChange={e => setWizardData({...wizardData, phone: e.target.value})} placeholder="DDD + Número" />
+                      </div>
+                      <div className="form-group">
+                        <label>Vencimento / Tipo</label>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <input type="number" className="input" min="1" max="28" value={wizardData.billing_day} onChange={e => setWizardData({...wizardData, billing_day: e.target.value})} placeholder="Dia (1-28)" style={{ width: '100px' }} />
+                          <select className="input" value={wizardData.plan_type} onChange={e => setWizardData({...wizardData, plan_type: e.target.value})} style={{ flex: 1 }}>
+                            <option value="monthly">Mensal</option>
+                            <option value="annual">Anual</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bloco 3: Acesso ao Painel Lojista */}
                   {wizardMode === 'create' && (
-                    <>
-                      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '10px 0' }} />
-                      <h4 style={{ color: 'var(--primary)' }}>Acesso do Lojista</h4>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                        <div style={{ padding: '8px', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', borderRadius: '8px' }}><LogOut style={{ transform: 'rotate(180deg)' }} size={20} /></div>
+                        <h4 style={{ margin: 0, fontSize: '16px' }}>Credenciais de Acesso (Lojista)</h4>
+                      </div>
                       <div className="form-grid">
                         <div className="form-group">
-                          <label>E-mail (Login)</label>
-                          <input type="email" className="input" required value={wizardData.email} onChange={e => setWizardData({...wizardData, email: e.target.value})} placeholder="loja@email.com" />
+                          <label>E-mail de Login</label>
+                          <input type="email" className="input" required value={wizardData.email} onChange={e => setWizardData({...wizardData, email: e.target.value})} placeholder="lojista@email.com" />
                         </div>
                         <div className="form-group">
                           <label>Senha Provisória</label>
-                          <input type="text" className="input" required value={wizardData.password} onChange={e => setWizardData({...wizardData, password: e.target.value})} placeholder="Min. 6 caracteres" />
+                          <input type="text" className="input" required value={wizardData.password} onChange={e => setWizardData({...wizardData, password: e.target.value})} placeholder="Crie uma senha inicial" />
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
-                    <button type="submit" className="btn btn-primary btn-glow">Próximo <ArrowRight size={16} /></button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px' }}>
+                    <button type="submit" className="btn btn-primary btn-glow" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                      Próximo Passo <ArrowRight size={18} />
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* PASSO 2: PERSONALIZAÇÃO (CMS) */}
               {wizardStep === 2 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
-                  {/* COLUNA ESQUERDA: FORMULÁRIO */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '12px' }}>
-                    <h4 style={{ color: 'var(--primary)', marginBottom: '8px' }}>Passo 2: Personalização Total da Vitrine</h4>
+                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
                   
-                  {/* TABS NAVIGATION */}
-                  <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <button type="button" onClick={() => setActiveTab('identidade')} className={`btn ${activeTab === 'identidade' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>🎨 Identidade</button>
-                    <button type="button" onClick={() => setActiveTab('home')} className={`btn ${activeTab === 'home' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>🏠 Página Inicial</button>
-                    <button type="button" onClick={() => setActiveTab('contato')} className={`btn ${activeTab === 'contato' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>📞 Contato & Rodapé</button>
+                  {/* SIDEBAR DO CMS WIZARD */}
+                  <div style={{ width: '220px', background: 'rgba(0,0,0,0.2)', borderRight: '1px solid rgba(255,255,255,0.05)', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--gray)', fontWeight: 'bold', paddingLeft: '8px', marginBottom: '8px' }}>Construtor CMS</div>
+                    
+                    <button type="button" onClick={() => setActiveTab('identidade')} style={{ textAlign: 'left', background: activeTab === 'identidade' ? 'rgba(205, 164, 52, 0.1)' : 'transparent', color: activeTab === 'identidade' ? 'var(--primary)' : 'var(--gray)', padding: '12px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s' }}>
+                      <Palette size={18} /> Aparência Visual
+                    </button>
+                    
+                    <button type="button" onClick={() => setActiveTab('home')} style={{ textAlign: 'left', background: activeTab === 'home' ? 'rgba(205, 164, 52, 0.1)' : 'transparent', color: activeTab === 'home' ? 'var(--primary)' : 'var(--gray)', padding: '12px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s' }}>
+                      <ImageIcon size={18} /> Banner & Info
+                    </button>
+                    
+                    <button type="button" onClick={() => setActiveTab('contato')} style={{ textAlign: 'left', background: activeTab === 'contato' ? 'rgba(205, 164, 52, 0.1)' : 'transparent', color: activeTab === 'contato' ? 'var(--primary)' : 'var(--gray)', padding: '12px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s' }}>
+                      <Phone size={18} /> Contato & Footer
+                    </button>
+                    
+                    <button type="button" onClick={() => setActiveTab('ai')} style={{ textAlign: 'left', background: activeTab === 'ai' ? 'rgba(205, 164, 52, 0.1)' : 'transparent', color: activeTab === 'ai' ? 'var(--primary)' : 'var(--gray)', padding: '12px 16px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px', transition: '0.2s' }}>
+                      <MessageSquare size={18} /> IA e Bot
+                    </button>
+                    
+                    <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+                      <button type="submit" className="btn btn-primary btn-glow" disabled={wizardSaving} style={{ width: '100%', padding: '12px' }}>
+                        {wizardSaving ? 'Salvando...' : 'Finalizar e Salvar'}
+                      </button>
+                      <button type="button" onClick={() => setWizardStep(1)} className="btn btn-outline" style={{ width: '100%', marginTop: '10px' }}>Voltar</button>
+                    </div>
                   </div>
+
+                  {/* MAIN CONTENT DO FORMULÁRIO */}
+                  <div style={{ flex: 1, padding: '30px', overflowY: 'auto', background: 'var(--bg-main)' }}>
                   
                   {/* ABA 1: IDENTIDADE VISUAL */}
                   {activeTab === 'identidade' && (
-                    <>
-                      {/* IDENTIDADE VISUAL */}
-                      <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                        <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Cores e Fontes</p>
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Cor Principal (botões, bordas)</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.primaryColor} onChange={e => setWizardData({...wizardData, primaryColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.primaryColor} onChange={e => setWizardData({...wizardData, primaryColor: e.target.value})} placeholder="#0047FF" style={{ flex: 1 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', paddingBottom: '40px' }}>
+                      
+                      {/* TEMAS E ESTRUTURA (NOVO) */}
+                      <div>
+                        <h3 style={{ margin: '0 0 20px', color: '#fff', fontSize: '20px' }}>Estilo Geral da Vitrine</h3>
+                        
+                        <label style={{ display: 'block', marginBottom: '12px', color: 'var(--gray)' }}>Selecione um Tema Base:</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                          <ThemeCard active={wizardData.theme === 'default'} onClick={() => setWizardData({...wizardData, theme: 'default'})} title="Clássico Escuro" desc="Preto absoluto, muito elegante" icon={<Store size={24} color='currentColor' />}  />
+                          <ThemeCard active={wizardData.theme === 'glass'} onClick={() => setWizardData({...wizardData, theme: 'glass'})} title="Glassmorphism" desc="Vidro, reflexos, premium" icon={<Sparkles size={24} color='currentColor' />}  />
+                          <ThemeCard active={wizardData.theme === 'light'} onClick={() => setWizardData({...wizardData, theme: 'light'})} title="Luz / Claro" desc="Branco e limpo" icon={<LayoutDashboard size={24} color='currentColor' />}  />
+                          <ThemeCard active={wizardData.theme === 'cyberpunk'} onClick={() => setWizardData({...wizardData, theme: 'cyberpunk'})} title="Cyberpunk" desc="Neon e futurista" icon={<Zap size={24} color='currentColor' />}  />
+                        </div>
+
+                        <div className="form-grid">
+                          <div className="form-group">
+                            <label>Design dos Botões</label>
+                            <select className="input" value={wizardData.buttonStyle || 'rounded'} onChange={e => setWizardData({...wizardData, buttonStyle: e.target.value})}>
+                              <option value="square">Quadrados (Sério)</option>
+                              <option value="rounded">Arredondados (Equilibrado)</option>
+                              <option value="pill">Pílula (Moderno)</option>
+                              <option value="neumorphism">Neumorphism (Relevo Suave)</option>
+                              <option value="outline-glow">Outline Glow (Transparente Brilhante)</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Textura de Fundo (Opcional URL)</label>
+                            <input type="text" className="input" value={wizardData.bgTextureUrl || ''} onChange={e => setWizardData({...wizardData, bgTextureUrl: e.target.value})} placeholder="URL de textura..." />
+                          </div>
+                        </div>
+
+                        {/* WOW EFFECTS SECTION */}
+                        <div style={{ marginTop: '30px', padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '16px' }}>
+                          <h4 style={{ margin: '0 0 20px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>Efeitos Especiais (WOW Effects)</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                            <CustomToggle checked={wizardData.effectParticles !== false} onChange={e => setWizardData({...wizardData, effectParticles: e.target.checked})} label="Partículas de Fundo" icon={<Sparkles size={18} color='currentColor' />}  />
+                            <CustomToggle checked={wizardData.effectGlow !== false} onChange={e => setWizardData({...wizardData, effectGlow: e.target.checked})} label="Botões com Bordas Neon" icon={<Sparkles size={18} color='currentColor' />}  />
+                            <CustomToggle checked={wizardData.effectTilt !== false} onChange={e => setWizardData({...wizardData, effectTilt: e.target.checked})} label="Cartões com Hover 3D" icon={<Package size={18} color='currentColor' />}  />
+                            <CustomToggle checked={wizardData.effectReveal !== false} onChange={e => setWizardData({...wizardData, effectReveal: e.target.checked})} label="Surgimento Suave (Scroll)" icon={<Activity size={18} color='currentColor' />}  />
+                            <CustomToggle checked={wizardData.effectSkeleton !== false} onChange={e => setWizardData({...wizardData, effectSkeleton: e.target.checked})} label="Efeito Skeleton (Ao carregar)" icon={<LayoutDashboard size={18} color='currentColor' />}  />
+                            <CustomToggle checked={wizardData.effectParallax === true} onChange={e => setWizardData({...wizardData, effectParallax: e.target.checked})} label="Fundo em Parallax" icon={<ImageIcon size={18} color='currentColor' />}  color="#22c55e" />
+                            <CustomToggle checked={wizardData.effectCursor === true} onChange={e => setWizardData({...wizardData, effectCursor: e.target.checked})} label="Cursor Customizado Mágico" icon={<Check size={18} color='currentColor' />}  color="#22c55e" />
+                            <CustomToggle checked={wizardData.effectFloating === true} onChange={e => setWizardData({...wizardData, effectFloating: e.target.checked})} label="Objetos 3D Flutuantes" icon={<Tags size={18} color='currentColor' />}  color="#22c55e" />
+                            <CustomToggle checked={wizardData.effectGlitch === true} onChange={e => setWizardData({...wizardData, effectGlitch: e.target.checked})} label="Texto Glitch (Títulos)" icon={<Settings size={18} color='currentColor' />}  color="#ff3366" />
+                            <CustomToggle checked={wizardData.effectPulse === true} onChange={e => setWizardData({...wizardData, effectPulse: e.target.checked})} label="Batida de Pulso (Comprar)" icon={<CheckCircle size={18} color='currentColor' />}  color="#ff3366" />
+                            <CustomToggle checked={wizardData.effectSnow === true} onChange={e => setWizardData({...wizardData, effectSnow: e.target.checked})} label="Chuva de Neve/Folhas" icon={<Sparkles size={18} color='currentColor' />}  color="#ff3366" />
+                          </div>
+                          
+                          {wizardData.effectFloating && (
+                            <div className="form-group" style={{ marginTop: '20px', background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px' }}>
+                                <label style={{ color: 'var(--neon-blue)' }}>Quais emojis/símbolos devem flutuar?</label>
+                                <input type="text" className="input" value={wizardData.floatingEmojis || '🧊,🍾,🥂'} onChange={e => setWizardData({...wizardData, floatingEmojis: e.target.value})} placeholder="Ex: 🎅,🌲,🎁" style={{ marginTop: '10px' }} />
+                                <small style={{ color: 'var(--text-muted)' }}>Separe por vírgulas.</small>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="form-group" style={{ marginTop: '30px' }}>
+                          <label style={{ display: 'block', marginBottom: '8px', color: 'var(--primary)', fontWeight: 'bold' }}>Ordenação das Seções da Vitrine</label>
+                          <SectionSorter sectionOrder={wizardData.sectionOrder} onChange={(newOrder) => setWizardData({...wizardData, sectionOrder: newOrder})} />
                         </div>
                       </div>
-                      <div className="form-group">
-                        <label>Cor de Fundo do Site</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.bgDark} onChange={e => setWizardData({...wizardData, bgDark: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.bgDark} onChange={e => setWizardData({...wizardData, bgDark: e.target.value})} placeholder="#030B22" style={{ flex: 1 }} />
+
+                      {/* CORES E FONTES */}
+                      <div>
+                        <h3 style={{ margin: '30px 0 20px', color: '#fff', fontSize: '20px' }}>Cores e Fontes</h3>
+                        <div className="form-grid">
+                          <div className="form-group">
+                            <label>Cor Principal (botões, bordas)</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.primaryColor} onChange={e => setWizardData({...wizardData, primaryColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.primaryColor} onChange={e => setWizardData({...wizardData, primaryColor: e.target.value})} placeholder="#0047FF" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor de Fundo do Site</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.bgDark} onChange={e => setWizardData({...wizardData, bgDark: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.bgDark} onChange={e => setWizardData({...wizardData, bgDark: e.target.value})} placeholder="#030B22" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor do Cabeçalho (Header)</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.headerBg || '#030B22'} onChange={e => setWizardData({...wizardData, headerBg: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.headerBg} onChange={e => setWizardData({...wizardData, headerBg: e.target.value})} placeholder="#030B22 ou rgba(3,11,34,0.9)" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor dos Links do Menu</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.navLinkColor || '#B8C2D1'} onChange={e => setWizardData({...wizardData, navLinkColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.navLinkColor} onChange={e => setWizardData({...wizardData, navLinkColor: e.target.value})} placeholder="#B8C2D1" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor dos Títulos (H1, H2...)</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.textHeading || '#FFFFFF'} onChange={e => setWizardData({...wizardData, textHeading: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.textHeading} onChange={e => setWizardData({...wizardData, textHeading: e.target.value})} placeholder="#FFFFFF" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor dos Textos Normais</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.textMain || '#B8C2D1'} onChange={e => setWizardData({...wizardData, textMain: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.textMain} onChange={e => setWizardData({...wizardData, textMain: e.target.value})} placeholder="#B8C2D1" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor de Destaque / Acento</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.accentColor || '#FFD700'} onChange={e => setWizardData({...wizardData, accentColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.accentColor} onChange={e => setWizardData({...wizardData, accentColor: e.target.value})} placeholder="#FFD700" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Cor do Banner Deslizante</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input type="color" className="input" value={wizardData.marqueeBgColor || '#0047FF'} onChange={e => setWizardData({...wizardData, marqueeBgColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px', borderRadius: '8px' }} />
+                              <input type="text" className="input" value={wizardData.marqueeBgColor} onChange={e => setWizardData({...wizardData, marqueeBgColor: e.target.value})} placeholder="#0047FF" style={{ flex: 1 }} />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                            <label>Fonte Principal</label>
+                            <select className="input" value={wizardData.fontFamily} onChange={e => setWizardData({...wizardData, fontFamily: e.target.value})}>
+                              <option value="Outfit">Outfit (Padrão)</option>
+                              <option value="Inter">Inter (Moderno)</option>
+                              <option value="Roboto">Roboto (Google)</option>
+                              <option value="Montserrat">Montserrat (Elegante)</option>
+                              <option value="Poppins">Poppins (Suave)</option>
+                              <option value="Playfair Display">Playfair Display (Sofisticado)</option>
+                              <option value="Oswald">Oswald (Bold/Impacto)</option>
+                            </select>
+                          </div>
+                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                            <label>Logo Secundário (ex: para o Cabeçalho Escuro da Loja)</label>
+                            <input type="file" accept="image/*" className="input" onChange={e => setWizardData({...wizardData, logoFile2: e.target.files[0]})} style={{ padding: '12px' }} />
+                            {wizardData.logoUrl2 && !wizardData.logoFile2 && <span style={{fontSize:'12px', color:'var(--success)', marginTop: '4px', display: 'block'}}>Logo secundário existente será mantido.</span>}
+                          </div>
+                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                            <label>Favicon do Site (Ícone da aba do navegador)</label>
+                            <input type="file" accept="image/png, image/x-icon, image/jpeg, image/svg+xml" className="input" onChange={e => setWizardData({...wizardData, faviconFile: e.target.files[0]})} style={{ padding: '12px' }} />
+                            {wizardData.faviconUrl && !wizardData.faviconFile && <span style={{fontSize:'12px', color:'var(--success)', marginTop: '4px', display: 'block'}}>Favicon existente será mantido.</span>}
+                          </div>
+                          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                            <label>Som de Notificação de Pedido (Opcional - MP3/WAV)</label>
+                            <input type="file" accept="audio/mpeg, audio/wav, audio/ogg" className="input" onChange={e => setWizardData({...wizardData, notificationSoundFile: e.target.files[0]})} style={{ padding: '12px' }} />
+                            {wizardData.notificationSoundUrl && !wizardData.notificationSoundFile && <span style={{fontSize:'12px', color:'var(--success)', marginTop: '4px', display: 'block'}}>Som personalizado existente será mantido. <audio src={wizardData.notificationSoundUrl} controls style={{height: '30px', marginTop: '5px', display: 'block'}}></audio></span>}
+                          </div>
                         </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor do Cabeçalho (Header)</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.headerBg || '#030B22'} onChange={e => setWizardData({...wizardData, headerBg: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.headerBg} onChange={e => setWizardData({...wizardData, headerBg: e.target.value})} placeholder="#030B22 ou rgba(3,11,34,0.9)" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor dos Links do Menu</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.navLinkColor || '#B8C2D1'} onChange={e => setWizardData({...wizardData, navLinkColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.navLinkColor} onChange={e => setWizardData({...wizardData, navLinkColor: e.target.value})} placeholder="#B8C2D1" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor dos Títulos (H1, H2...)</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.textHeading || '#FFFFFF'} onChange={e => setWizardData({...wizardData, textHeading: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.textHeading} onChange={e => setWizardData({...wizardData, textHeading: e.target.value})} placeholder="#FFFFFF" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor dos Textos Normais</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.textMain || '#B8C2D1'} onChange={e => setWizardData({...wizardData, textMain: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.textMain} onChange={e => setWizardData({...wizardData, textMain: e.target.value})} placeholder="#B8C2D1" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor de Destaque / Acento</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.accentColor || '#FFD700'} onChange={e => setWizardData({...wizardData, accentColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.accentColor} onChange={e => setWizardData({...wizardData, accentColor: e.target.value})} placeholder="#FFD700" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Cor do Banner Deslizante</label>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="color" className="input" value={wizardData.marqueeBgColor || '#0047FF'} onChange={e => setWizardData({...wizardData, marqueeBgColor: e.target.value})} style={{ height: '45px', padding: '5px', width: '70px' }} />
-                          <input type="text" className="input" value={wizardData.marqueeBgColor} onChange={e => setWizardData({...wizardData, marqueeBgColor: e.target.value})} placeholder="#0047FF" style={{ flex: 1 }} />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Fonte Principal</label>
-                        <select className="input" value={wizardData.fontFamily} onChange={e => setWizardData({...wizardData, fontFamily: e.target.value})}>
-                          <option value="Outfit">Outfit (Padrão)</option>
-                          <option value="Inter">Inter (Moderno)</option>
-                          <option value="Roboto">Roboto (Google)</option>
-                          <option value="Montserrat">Montserrat (Elegante)</option>
-                          <option value="Poppins">Poppins (Suave)</option>
-                          <option value="Playfair Display">Playfair Display (Sofisticado)</option>
-                          <option value="Oswald">Oswald (Bold/Impacto)</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                        <label>Logo Secundário (ex: para o Cabeçalho Escuro da Loja)</label>
-                        <input type="file" accept="image/*" className="input" onChange={e => setWizardData({...wizardData, logoFile2: e.target.files[0]})} style={{ padding: '8px' }} />
-                        {wizardData.logoUrl2 && !wizardData.logoFile2 && <span style={{fontSize:'12px', color:'var(--success)'}}>Logo secundário existente será mantido.</span>}
-                      </div>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                        <label>Favicon do Site (Ícone da aba do navegador)</label>
-                        <input type="file" accept="image/png, image/x-icon, image/jpeg, image/svg+xml" className="input" onChange={e => setWizardData({...wizardData, faviconFile: e.target.files[0]})} style={{ padding: '8px' }} />
-                        {wizardData.faviconUrl && !wizardData.faviconFile && <span style={{fontSize:'12px', color:'var(--success)'}}>Favicon existente será mantido.</span>}
-                      </div>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                        <label>Som de Notificação de Pedido (Opcional - MP3/WAV)</label>
-                        <input type="file" accept="audio/mpeg, audio/wav, audio/ogg" className="input" onChange={e => setWizardData({...wizardData, notificationSoundFile: e.target.files[0]})} style={{ padding: '8px' }} />
-                        {wizardData.notificationSoundUrl && !wizardData.notificationSoundFile && <span style={{fontSize:'12px', color:'var(--success)'}}>Som personalizado existente será mantido. <audio src={wizardData.notificationSoundUrl} controls style={{height: '30px', marginTop: '5px', display: 'block'}}></audio></span>}
                       </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                    <button type="button" onClick={() => setActiveTab('home')} className="btn btn-primary btn-glow">Avançar para Página Inicial <ArrowRight size={16} /></button>
-                  </div>
-                </>
-              )}
+                  )}
 
               {/* ABA 2: PÁGINA INICIAL */}
               {activeTab === 'home' && (
                 <>
                   {/* HERO / BANNER PRINCIPAL */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>🖼️ Banner Principal (Hero)</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Banner Principal (Hero)</p>
                     <div className="form-grid">
                       <div className="form-group">
                         <label>Tag de Destaque (ex: DISTRIBUIDORA PREMIUM)</label>
@@ -870,7 +1029,7 @@ const Tenants = () => {
 
                   {/* SOBRE NÓS */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>🏢 Sobre Nós</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Sobre Nós</p>
                     <div className="form-grid">
                       <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                         <label>Título da Seção</label>
@@ -921,7 +1080,7 @@ const Tenants = () => {
                 <>
                   {/* CONTATO */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>📞 Contato e Localização</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Contato e Localização</p>
                     <div className="form-grid">
                       <div className="form-group">
                         <label>Número do WhatsApp (exibição)</label>
@@ -953,7 +1112,7 @@ const Tenants = () => {
 
                   {/* REDES SOCIAIS */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>🌐 Redes Sociais</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Redes Sociais</p>
                     <div className="form-grid">
                       <div className="form-group">
                         <label>Instagram (URL)</label>
@@ -968,7 +1127,7 @@ const Tenants = () => {
 
                   {/* BANNERS DO RODAPÉ */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>🎫 Banners do Rodapé</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Banners do Rodapé</p>
                     <div className="form-grid">
                       {/* Banner 1 */}
                       <div className="form-group">
@@ -1032,7 +1191,7 @@ const Tenants = () => {
 
                   {/* RODAPÉ */}
                   <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>📝 Rodapé</p>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Rodapé</p>
                     <div className="form-grid">
                       <div className="form-group">
                         <label>Cidade da Loja</label>
@@ -1044,23 +1203,44 @@ const Tenants = () => {
                       </div>
                     </div>
                   </div>
-                </>
-              )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                      <button type="button" onClick={() => setActiveTab('ai')} className="btn btn-primary btn-glow">Avançar para IA <ArrowRight size={16} /></button>
+                    </div>
+                  </>
+                )}
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                    <button type="button" className="btn btn-outline" onClick={() => setWizardStep(1)}>Voltar</button>
-                    <button type="submit" className="btn btn-primary btn-glow" disabled={wizardSaving}>
-                      {wizardSaving ? 'Salvando tudo...' : (wizardMode === 'create' ? 'Finalizar e Criar Loja' : 'Salvar Alterações')}
-                    </button>
-                  </div>
-                  </div>
+                {/* ABA 4: INTELIGÊNCIA ARTIFICIAL */}
+                {activeTab === 'ai' && (
+                  <>
+                    <div style={{ padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                      <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary)', letterSpacing: '1px' }}>Assistente de Vendas (IA)</p>
+                      <div className="form-grid">
+                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                          <label>Chave da API da OpenAI (sk-...)</label>
+                          <input type="password" className="input" value={wizardData.openai_api_key} onChange={e => setWizardData({...wizardData, openai_api_key: e.target.value})} placeholder="sk-..." />
+                          <span style={{fontSize:'11px', color:'var(--text-muted)'}}>Obrigatório para que a inteligência artificial funcione. Crie sua chave em platform.openai.com.</span>
+                        </div>
+                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                          <label>Comportamento do Agente (Prompt de Sistema)</label>
+                          <textarea className="input" value={wizardData.ai_system_prompt} onChange={e => setWizardData({...wizardData, ai_system_prompt: e.target.value})} rows="6" placeholder="Descreva as instruções que o agente virtual deve seguir ao conversar com clientes..."></textarea>
+                          <span style={{fontSize:'11px', color:'var(--text-muted)'}}>Diga como o bot deve se portar, como "Você é um atendente simpático da distribuidora Zé. Seu objetivo é ajudar na compra."</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                  </div> {/* END OF MAIN CONTENT */}
                   
                   {/* COLUNA DIREITA: LIVE PREVIEW IFRAME */}
-                  <div style={{ height: '70vh', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', background: '#fff', position: 'sticky', top: 0 }}>
+                  <div style={{ width: '400px', borderLeft: '1px solid rgba(255,255,255,0.05)', background: '#fff', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px', background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', zIndex: 10, color: '#374151', fontSize: '12px', fontWeight: 'bold' }}>
+                      <Activity size={14} /> Pré-visualização ao Vivo
+                    </div>
                     <iframe 
                       id="live-preview-iframe"
-                      src={`http://127.0.0.1:5500/index.html?preview=true&loja=${wizardData.slug}`} 
-                      style={{ width: '100%', height: '100%', border: 'none' }} 
+                      src={`http://localhost:3000/index.html?preview=true&loja=${wizardData.slug}`} 
+                      style={{ width: '100%', height: '100%', border: 'none', paddingTop: '45px' }} 
                       title="Live Preview"
                     />
                   </div>
@@ -1090,8 +1270,8 @@ const Tenants = () => {
                     <div style={{ background: 'var(--bg-dark)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <label style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>LINK DO SITE DE VENDAS (VITRINE)</label>
                       <div style={{ display: 'flex', gap: '10px' }}>
-                        <input type="text" readOnly className="input" value={`http://localhost:5500/index.html?loja=${wizardData.slug}`} style={{ background: 'transparent' }} />
-                        <button type="button" className="btn btn-primary" onClick={(e) => {navigator.clipboard.writeText(`http://localhost:5500/index.html?loja=${wizardData.slug}`); e.target.innerText='Copiado!';}}>Copiar</button>
+                        <input type="text" readOnly className="input" value={`http://localhost:3000/index.html?loja=${wizardData.slug}`} style={{ background: 'transparent' }} />
+                        <button type="button" className="btn btn-primary" onClick={(e) => {navigator.clipboard.writeText(`http://localhost:3000/index.html?loja=${wizardData.slug}`); e.target.innerText='Copiado!';}}>Copiar</button>
                       </div>
                     </div>
                   </div>

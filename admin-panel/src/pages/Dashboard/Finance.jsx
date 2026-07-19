@@ -7,28 +7,47 @@ const Finance = () => {
   const { tenantId } = useAuth();
   const [salesHistory, setSalesHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     if (tenantId) {
       loadFinanceData();
     }
-  }, [tenantId]);
+  }, [tenantId, period, customStartDate, customEndDate]);
 
   const loadFinanceData = async () => {
     if (!tenantId) return;
     setLoading(true);
     try {
-      // Define a data limite para, por exemplo, os últimos 30 dias ou início do mês atual
-      const firstDay = new Date();
-      firstDay.setDate(firstDay.getDate() - 30);
-
-      // 1. Buscar todos os pedidos
-      const { data: orders, error } = await supabase
+      const now = new Date();
+      let query = supabase
         .from('orders')
         .select('*')
         .eq('tenant_id', tenantId)
-        .gte('created_at', firstDay.toISOString())
         .order('created_at', { ascending: false });
+
+      let startDate = new Date();
+      if (period === 'week') {
+        startDate.setDate(now.getDate() - 7);
+        query = query.gte('created_at', startDate.toISOString());
+      } else if (period === 'month') {
+        startDate.setMonth(now.getMonth() - 1);
+        query = query.gte('created_at', startDate.toISOString());
+      } else if (period === 'year') {
+        startDate.setFullYear(now.getFullYear() - 1);
+        query = query.gte('created_at', startDate.toISOString());
+      } else if (period === 'custom') {
+        if (customStartDate) {
+          query = query.gte('created_at', new Date(`${customStartDate}T00:00:00`).toISOString());
+        }
+        if (customEndDate) {
+          query = query.lte('created_at', new Date(`${customEndDate}T23:59:59`).toISOString());
+        }
+      }
+
+      const { data: orders, error } = await query;
 
       if (error) throw error;
 
@@ -115,9 +134,38 @@ const Finance = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h2>Financeiro e Histórico</h2>
-        <button className="btn btn-outline" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--neon-green)', borderColor: 'var(--neon-green)' }}>
-          <Download size={18} /> Exportar Relatório Geral
-        </button>
+        
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {period === 'custom' && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input 
+                type="date" 
+                value={customStartDate} 
+                onChange={e => setCustomStartDate(e.target.value)}
+                style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }}
+              />
+              <span style={{ color: 'var(--gray)' }}>até</span>
+              <input 
+                type="date" 
+                value={customEndDate} 
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', outline: 'none' }}
+              />
+            </div>
+          )}
+          
+          <select value={period} onChange={e => setPeriod(e.target.value)} style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff', outline: 'none' }}>
+            <option value="week" style={{ background: '#0f172a', color: '#fff' }}>Últimos 7 dias</option>
+            <option value="month" style={{ background: '#0f172a', color: '#fff' }}>Últimos 30 dias</option>
+            <option value="year" style={{ background: '#0f172a', color: '#fff' }}>Último Ano</option>
+            <option value="all" style={{ background: '#0f172a', color: '#fff' }}>Todo o período</option>
+            <option value="custom" style={{ background: '#0f172a', color: '#fff' }}>Personalizado</option>
+          </select>
+          
+          <button className="btn btn-outline" onClick={exportToCSV} disabled={loading || salesHistory.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--neon-green)', borderColor: 'var(--neon-green)', cursor: (loading || salesHistory.length===0) ? 'not-allowed' : 'pointer', opacity: (loading || salesHistory.length===0) ? 0.5 : 1 }}>
+            <Download size={18} /> Exportar Relatório Geral
+          </button>
+        </div>
       </div>
 
       <div className="glass" style={{ overflow: 'hidden' }}>

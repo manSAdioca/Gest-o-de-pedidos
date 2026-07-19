@@ -14,6 +14,10 @@ import Emails from './pages/Dashboard/Emails';
 import StoreProducts from './pages/Dashboard/StoreProducts';
 import StoreCategories from './pages/Dashboard/StoreCategories';
 import StoreOrders from './pages/Dashboard/StoreOrders';
+import GlobalCatalog from './pages/Dashboard/GlobalCatalog';
+import CrmManager from './pages/Dashboard/CrmManager';
+import PlatformSettings from './pages/Dashboard/PlatformSettings';
+import UpdatePassword from './pages/UpdatePassword';
 
 const ProtectedRoute = ({ children }) => {
   const { user, role, loading } = useAuth();
@@ -30,6 +34,7 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
           
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Home />} />
@@ -42,6 +47,9 @@ const App = () => {
             <Route path="products" element={<StoreProducts />} />
             <Route path="categories" element={<StoreCategories />} />
             <Route path="orders" element={<StoreOrders />} />
+            <Route path="global-catalog" element={<GlobalCatalog />} />
+            <Route path="crm-manager" element={<CrmManager />} />
+            <Route path="white-label" element={<PlatformSettings />} />
           </Route>
         </Routes>
       </Router>
