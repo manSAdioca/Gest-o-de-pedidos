@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Store, CreditCard, LogOut, Tags, Megaphone, Search, ArrowRight, Eye, ShieldBan, Package, DollarSign, ShoppingCart, Activity, Plus, Edit3, Trash2, Check, CheckCircle, Settings, X, Palette, Image as ImageIcon, MessageSquare, Phone, Sparkles, Zap } from 'lucide-react';
+import { LayoutDashboard, Store, CreditCard, LogOut, Tags, Megaphone, Search, ArrowRight, Eye, ShieldBan, Package, DollarSign, ShoppingCart, Activity, Plus, Edit3, Trash2, Check, CheckCircle, Settings, X, Palette, Image as ImageIcon, MessageSquare, Phone, Sparkles, Zap, Users } from 'lucide-react';
 
 import CustomToggle from '../../components/UI/CustomToggle';
 import ThemeCard from '../../components/UI/ThemeCard';
@@ -27,6 +27,16 @@ const Tenants = () => {
   const [editingTenantId, setEditingTenantId] = useState(null);
   const [wizardSaving, setWizardSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('identidade'); // Tabs: identidade, home, contato
+
+  // Team Management States
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [teamTenant, setTeamTenant] = useState(null);
+  const [teamUsers, setTeamUsers] = useState([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [newTeamEmail, setNewTeamEmail] = useState('');
+  const [newTeamPassword, setNewTeamPassword] = useState('');
+  const [newTeamRole, setNewTeamRole] = useState('funcionario');
+  const [creatingTeam, setCreatingTeam] = useState(false);
 
   const [wizardData, setWizardData] = useState({
     name: '', slug: '', custom_domain: '', plan_id: '', email: '', password: '', logoFile: null, logoUrl: null,
@@ -523,6 +533,69 @@ const Tenants = () => {
     }
   };
 
+  // --- TEAM MANAGEMENT LOGIC ---
+  const openTeamModal = (tenant) => {
+    setTeamTenant(tenant);
+    setTeamModalOpen(true);
+    loadTeamUsers(tenant.id);
+  };
+
+  const loadTeamUsers = async (tId) => {
+    setLoadingTeam(true);
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('tenant_id', tId);
+      if (error) throw error;
+      setTeamUsers(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
+  const handleCreateTeamUser = async (e) => {
+    e.preventDefault();
+    if (newTeamPassword.length < 6) return alert('A senha deve ter no mínimo 6 caracteres.');
+    
+    setCreatingTeam(true);
+    try {
+      const secondarySupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      });
+      
+      const { data, error } = await secondarySupabase.auth.signUp({
+        email: newTeamEmail,
+        password: newTeamPassword,
+        options: { data: { tenant_id: teamTenant.id, role: newTeamRole } }
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+         await supabase.from('profiles').update({ tenant_id: teamTenant.id, role: newTeamRole }).eq('id', data.user.id);
+      }
+      
+      setNewTeamEmail('');
+      setNewTeamPassword('');
+      loadTeamUsers(teamTenant.id);
+    } catch (err) {
+      alert('Erro ao criar usuário: ' + err.message);
+    } finally {
+      setCreatingTeam(false);
+    }
+  };
+
+  const handleDeleteTeamUser = async (userId) => {
+    if (!window.confirm("Atenção: Deseja realmente excluir permanentemente este usuário da loja? Ele perderá acesso imediatamente.")) return;
+    try {
+      const { error } = await supabase.rpc('delete_user_admin', { user_id_param: userId });
+      if (error) throw error;
+      loadTeamUsers(teamTenant.id);
+    } catch (err) {
+      alert('Erro ao excluir usuário: ' + err.message);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -579,6 +652,9 @@ const Tenants = () => {
                       <button onClick={() => openEditWizard(t)} className="btn btn-outline" style={{ padding: '8px' }} title="Editar Loja e Personalizar">
                         <Edit3 size={18} />
                       </button>
+                      <button onClick={() => openTeamModal(t)} className="btn btn-outline" style={{ padding: '8px', borderColor: 'var(--neon-blue)', color: 'var(--neon-blue)' }} title="Gerenciar Equipe / Acessos">
+                        <Users size={18} />
+                      </button>
                       <button onClick={() => handleSpy(t)} className="btn btn-primary btn-glow" style={{ padding: '8px' }} title="Espiar Faturamento e Produtos">
                         <Eye size={18} />
                       </button>
@@ -592,6 +668,73 @@ const Tenants = () => {
           </table>
         )}
       </div>
+
+      {/* MODAL GESTÃO DE EQUIPE */}
+      {teamModalOpen && teamTenant && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div className="card" style={{ width: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={20} color="var(--primary)" /> 
+                Equipe: {teamTenant.name}
+              </h3>
+              <button onClick={() => setTeamModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateTeamUser} style={{ display: 'flex', gap: '10px', marginBottom: '30px', alignItems: 'flex-end', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>E-mail</label>
+                <input type="email" required className="input" placeholder="novo@email.com" value={newTeamEmail} onChange={e => setNewTeamEmail(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>Senha (Mín. 6)</label>
+                <input type="password" required minLength="6" className="input" placeholder="******" value={newTeamPassword} onChange={e => setNewTeamPassword(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>Cargo</label>
+                <select className="input" value={newTeamRole} onChange={e => setNewTeamRole(e.target.value)}>
+                  <option value="admin">Administrador (Dono)</option>
+                  <option value="funcionario">Funcionário Base</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={creatingTeam} style={{ height: '42px', padding: '0 15px' }}>
+                {creatingTeam ? '...' : <Plus size={18} />}
+              </button>
+            </form>
+
+            <div>
+              <h4 style={{ fontSize: '14px', marginBottom: '15px', color: 'var(--text-muted)' }}>Membros Atuais</h4>
+              {loadingTeam ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>Carregando...</div>
+              ) : teamUsers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Nenhum usuário encontrado.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <tbody>
+                    {teamUsers.map(user => (
+                      <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px 10px' }}>{user.email}</td>
+                        <td style={{ padding: '12px 10px' }}>
+                          <span style={{ padding: '4px 8px', borderRadius: '4px', background: user.role === 'admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', color: user.role === 'admin' ? '#3b82f6' : 'var(--text-muted)', fontSize: '12px' }}>
+                            {user.role === 'admin' ? 'Admin' : 'Funcionário'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px 10px' }}>
+                          <button onClick={() => handleDeleteTeamUser(user.id)} className="btn btn-outline" style={{ padding: '4px 8px', borderColor: 'rgba(239,68,68,0.3)', color: 'rgba(239,68,68,0.9)' }} title="Excluir Usuário">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL MODO ESPIÃO */}
       {spyModal && (
