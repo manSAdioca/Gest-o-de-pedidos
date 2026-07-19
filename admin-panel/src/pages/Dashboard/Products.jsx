@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Trash2, Image as ImageIcon, Search, X, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, Image as ImageIcon, Search, X, Download, Upload } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import Papa from 'papaparse';
 
 const Products = () => {
   const { user, tenantId } = useAuth();
@@ -20,6 +21,9 @@ const Products = () => {
   const [showGlobalCatalog, setShowGlobalCatalog] = useState(false);
   const [globalProducts, setGlobalProducts] = useState([]);
   const [globalCatalogSearch, setGlobalCatalogSearch] = useState('');
+  
+  const fileInputRef = useRef(null);
+  const [isImporting, setIsImporting] = useState(false);
   
   const [formData, setFormData] = useState({
     productName: '',
@@ -230,6 +234,118 @@ const Products = () => {
     document.body.removeChild(link);
   };
 
+  const handleImportCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (maxProducts && products.length >= maxProducts) {
+      alert(`LIMITE ATINGIDO!\nSeu plano permite no máximo ${maxProducts} produtos. Faça um upgrade para adicionar mais.`);
+      e.target.value = null;
+      return;
+    }
+
+    setIsImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const rows = results.data;
+          let importedCount = 0;
+          let skippedCount = 0;
+          
+          const limit = maxProducts ? (maxProducts - products.length) : rows.length;
+          
+          const categoryMap = {};
+          categories.forEach(c => {
+             categoryMap[c.name.toLowerCase().trim()] = c.slug;
+          });
+          const defaultCategory = categories.length > 0 ? categories[0].slug : 'cervejas';
+
+          const productsToInsert = [];
+
+          for (let i = 0; i < rows.length; i++) {
+            if (importedCount >= limit) break; 
+            
+            const row = rows[i];
+            const name = row['Nome'] || row['NOME'] || row['name'] || row['Name'];
+            let priceRaw = row['Preco'] || row['Preço'] || row['PRECO'] || row['Preco (R$)'] || row['price'] || row['Valor'] || row['valor'];
+            let stockRaw = row['Estoque'] || row['ESTOQUE'] || row['stock'] || row['quantidade'] || row['Quantidade'];
+            let categoryRaw = row['Categoria'] || row['CATEGORIA'] || row['category'];
+            let desc = row['Descricao'] || row['Descrição'] || row['description'] || '';
+            let imageUrl = row['URL da Imagem'] || row['Imagem'] || row['image_url'] || '';
+            
+            if (!name || !priceRaw) {
+               skippedCount++;
+               continue;
+            }
+            
+            priceRaw = priceRaw.toString().replace('R$', '').replace(',', '.').trim();
+            const price = parseFloat(priceRaw);
+            if (isNaN(price)) {
+               skippedCount++;
+               continue;
+            }
+            
+            let stock = 9999;
+            if (stockRaw && stockRaw.toString().toLowerCase() !== 'ilimitado') {
+               stock = parseInt(stockRaw, 10);
+               if (isNaN(stock)) stock = 9999;
+            }
+            
+            let categorySlug = defaultCategory;
+            if (categoryRaw) {
+                const searchCat = categoryRaw.toLowerCase().trim();
+                if (categoryMap[searchCat]) {
+                    categorySlug = categoryMap[searchCat];
+                } else {
+                    const newSlug = searchCat.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    if (categories.some(c => c.slug === newSlug)) {
+                        categorySlug = newSlug;
+                    }
+                }
+            }
+            
+            productsToInsert.push({
+               name: name.trim(),
+               category: categorySlug,
+               price: price,
+               stock: stock,
+               description: desc.trim(),
+               image_url: imageUrl.trim(),
+               active: true,
+               tenant_id: tenantId
+            });
+            
+            importedCount++;
+          }
+          
+          if (productsToInsert.length > 0) {
+             const { error } = await supabase.from('products').insert(productsToInsert);
+             if (error) throw error;
+             alert(`Importação Concluída!\n- Produtos adicionados: ${importedCount}\n- Produtos ignorados/erros: ${skippedCount}`);
+             loadProducts();
+          } else {
+             alert('Nenhum produto válido encontrado para importação no arquivo CSV.\n\nVerifique se o arquivo tem colunas como "Nome", "Preco", "Categoria".');
+          }
+          
+        } catch (err) {
+          console.error("Erro na importação:", err);
+          alert('Erro ao importar produtos no banco de dados. Verifique os dados.');
+        } finally {
+          setIsImporting(false);
+          e.target.value = null; 
+        }
+      },
+      error: (error) => {
+        console.error("Erro no PapaParse:", error);
+        alert('Erro ao ler o arquivo CSV.');
+        setIsImporting(false);
+        e.target.value = null;
+      }
+    });
+  };
+
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
@@ -248,6 +364,21 @@ const Products = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            onChange={handleImportCSV} 
+          />
+          <button 
+            className="btn btn-outline" 
+            onClick={() => fileInputRef.current?.click()} 
+            style={{ color: 'var(--neon-blue)', borderColor: 'var(--neon-blue)' }}
+            disabled={isImporting}
+          >
+            <Upload size={18} /> {isImporting ? 'Importando...' : 'Importar'}
+          </button>
           <button className="btn btn-outline" onClick={exportToCSV} style={{ color: 'var(--neon-green)', borderColor: 'var(--neon-green)' }}>
             <Download size={18} /> Exportar
           </button>
