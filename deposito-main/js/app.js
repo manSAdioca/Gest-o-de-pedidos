@@ -326,9 +326,13 @@ function getStoreSlug() {
     let slug = urlParams.get('loja');
     if (!slug) {
         // Fallback para subdomínio (ex: disk100.distribuidora.com)
-        const hostParts = window.location.hostname.split('.');
-        if (hostParts.length > 1 && hostParts[0] !== 'www' && hostParts[0] !== 'localhost') {
-            slug = hostParts[0];
+        const hostname = window.location.hostname;
+        // Evita que o domínio padrão do Vercel seja tratado como slug de loja
+        if (!hostname.includes('vercel.app')) {
+            const hostParts = hostname.split('.');
+            if (hostParts.length > 1 && hostParts[0] !== 'www' && hostParts[0] !== 'localhost') {
+                slug = hostParts[0];
+            }
         }
     }
     return slug || 'imperatriz'; // Fallback padrão
