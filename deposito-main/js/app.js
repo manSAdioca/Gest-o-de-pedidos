@@ -2038,7 +2038,7 @@ async function handleCheckoutFormSubmit(e) {
 
     // Redirect to WhatsApp
     const encodedText = encodeURIComponent(message);
-    const phoneNumber = '5516992092552'; // Número para os pedidos
+    const phoneNumber = '5516992094664'; // Número para os pedidos
     const url = `https://wa.me/${phoneNumber}?text=${encodedText}`;
     
     // Open in a new tab
