@@ -364,6 +364,37 @@ async function initializeTenant() {
     
     STORE_SLUG = getStoreSlug();
     
+    // === PREVIEW DE NOVA LOJA ===
+    // Se o slug for 'preview_new_store', é uma pré-visualização de criação.
+    // Não busca nenhum tenant no banco para evitar carregar dados de outra loja.
+    const isPreviewMode = new URLSearchParams(window.location.search).get('preview') === 'true';
+    if (STORE_SLUG === 'preview_new_store' && isPreviewMode) {
+        console.log('[Preview] Modo de nova loja detectado. Nenhum tenant será carregado.');
+        const loader = document.getElementById('global-loader-overlay');
+        if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500); }
+        // Oculta seção de categorias (sem produtos cadastrados)
+        const catSection = document.getElementById('categorias');
+        if (catSection) catSection.style.display = 'none';
+        // Oculta mapa vazio
+        const mapContainer = document.getElementById('cms-map-container');
+        if (mapContainer) mapContainer.style.display = 'none';
+        // Substitui grid de produtos por placeholder visual
+        const prodGrid = document.getElementById('products-grid');
+        if (prodGrid) {
+            prodGrid.innerHTML = `
+                <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:rgba(255,255,255,0.3);">
+                    <div style="font-size:48px;margin-bottom:16px;">📦</div>
+                    <h3 style="margin:0 0 8px;font-size:18px;color:rgba(255,255,255,0.5);">Seus produtos aparecerão aqui</h3>
+                    <p style="margin:0;font-size:14px;">Após criar a loja, o lojista pode cadastrar os produtos pelo painel.</p>
+                </div>`;
+        }
+        // Remove botões de filtro de categoria
+        const filterContainer = document.getElementById('categories-filter-container');
+        if (filterContainer) filterContainer.innerHTML = '';
+        return; // TENANT_ID permanece null -> produtos NÃO carregam do banco
+    }
+    // ============================
+    
     try {
         let queryField = 'slug';
         let queryValue = STORE_SLUG;
@@ -459,8 +490,43 @@ async function initializeTenant() {
 }
 
 // === LÓGICA DE INJEÇÃO DO CMS (Reutilizável para Live Preview) ===
+// === LISTENER: Recebe mensagens do painel de administração via postMessage ===
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'CMS_LIVE_PREVIEW') {
+        window.applyCMS(event.data.payload);
+    }
+});
+
 window.applyCMS = function(cms) {
     console.log('[Live Preview] applyCMS executado com:', cms);
+    
+    // Atualiza nome da loja no topo e título da aba
+    if (cms.name) {
+        document.title = cms.name + " - Distribuidora de Bebidas";
+        const subtextEl = document.getElementById('store-logo-subtext');
+        const maintextEl = document.getElementById('store-logo-maintext');
+        if (maintextEl && subtextEl) {
+            const parts = cms.name.split(' ');
+            if (parts.length > 1) {
+                subtextEl.textContent = parts[0];
+                maintextEl.textContent = parts.slice(1).join(' ');
+            } else {
+                subtextEl.textContent = 'LOJA';
+                maintextEl.textContent = cms.name;
+            }
+        }
+    }
+
+    // Atualiza o Logo (se houver logoUrl ou logo local em base64/blob)
+    if (cms.logo_url || cms.logoUrl) {
+        const imgEl = document.getElementById('store-logo-img');
+        if (imgEl) imgEl.src = cms.logo_url || cms.logoUrl;
+    } else if (cms.logoFile && cms.logoFile instanceof File) {
+        // Se vier como File object (o navegador pode bloquear ou não)
+        const imgEl = document.getElementById('store-logo-img');
+        if (imgEl) imgEl.src = URL.createObjectURL(cms.logoFile);
+    }
+
     // INJEÇÃO SEGURA DE TEXTOS
     if (cms.heroTitle) {
         const el = document.getElementById('cms-hero-title');
@@ -518,9 +584,16 @@ window.applyCMS = function(cms) {
         const link = document.getElementById('cms-contact-email-link');
         if (link) link.href = 'mailto:' + cms.emailText;
     }
-    if (cms.mapUrl) {
+    if (cms.mapUrl && cms.mapUrl.trim() !== '') {
         const el = document.getElementById('cms-map-iframe');
-        if (el) el.src = cms.mapUrl;
+        const mapContainer = document.getElementById('cms-map-container');
+        if (el) {
+            el.src = cms.mapUrl;
+            if (mapContainer) mapContainer.style.display = 'block';
+        }
+    } else {
+        const mapContainer = document.getElementById('cms-map-container');
+        if (mapContainer) mapContainer.style.display = 'none';
     }
     
     if (cms.aboutTitle) { const el = document.getElementById('cms-about-title'); if (el) el.textContent = cms.aboutTitle; }
