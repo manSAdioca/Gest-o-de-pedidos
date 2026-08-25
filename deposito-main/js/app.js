@@ -2533,4 +2533,29 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.style.backgroundPositionY = -(scrolled * 0.3) + 'px';
     };
     initParallax();
+
+    // Promo Modal Logic
+    const promoModal = document.getElementById('promo-modal');
+    const promoOverlay = document.getElementById('promo-modal-overlay');
+    const promoCloseBtn = document.getElementById('promo-modal-close');
+
+    const openPromoModal = () => {
+        if(promoModal && promoOverlay) {
+            promoModal.classList.add('active');
+            promoOverlay.classList.add('active');
+        }
+    };
+
+    const closePromoModal = () => {
+        if(promoModal && promoOverlay) {
+            promoModal.classList.remove('active');
+            promoOverlay.classList.remove('active');
+        }
+    };
+
+    if (promoCloseBtn) promoCloseBtn.addEventListener('click', closePromoModal);
+    if (promoOverlay) promoOverlay.addEventListener('click', closePromoModal);
+
+    // Show modal shortly after load
+    setTimeout(openPromoModal, 800);
 });
